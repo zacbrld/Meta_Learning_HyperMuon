@@ -133,21 +133,24 @@ class HyperMuonOptimizer:
         self._lambda = lambda_muon
 
         # ── Learnable hyperparameters ──────────────────────────────────────
-        self.lr_raw = nn.Parameter(torch.tensor(math.log(lr_init)))
+        # Keep hyperparameters in float64 so very small meta-updates are not
+        # rounded away when kappa_mu / kappa_abc are intentionally tiny.
+        hp_dtype = torch.float64
+        self.lr_raw = nn.Parameter(torch.tensor(math.log(lr_init), dtype=hp_dtype))
         self._kappa_lr = kappa_lr
 
         if level >= 2:
             # sigmoid(mu_raw) ≈ mu_init
             mu_raw_init = math.log(mu_init / (1 - mu_init))
-            self.mu_raw = nn.Parameter(torch.tensor(mu_raw_init))
+            self.mu_raw = nn.Parameter(torch.tensor(mu_raw_init, dtype=hp_dtype))
             self._kappa_mu = kappa_mu
         else:
             self._mu_fixed = mu_init
 
         if level >= 3:
-            self.a = nn.Parameter(torch.tensor(ns_a))
-            self.b = nn.Parameter(torch.tensor(ns_b))
-            self.c = nn.Parameter(torch.tensor(ns_c))
+            self.a = nn.Parameter(torch.tensor(ns_a, dtype=hp_dtype))
+            self.b = nn.Parameter(torch.tensor(ns_b, dtype=hp_dtype))
+            self.c = nn.Parameter(torch.tensor(ns_c, dtype=hp_dtype))
             self._kappa_abc = kappa_abc
         else:
             self._a_fixed = ns_a

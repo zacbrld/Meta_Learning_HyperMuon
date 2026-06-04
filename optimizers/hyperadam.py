@@ -45,7 +45,8 @@ class HyperAdamOptimizer:
 
         # Learnable log-lr
         self.lr_raw = nn.Parameter(
-            torch.tensor(math.log(lr_init)), requires_grad=True
+            torch.tensor(math.log(lr_init), dtype=torch.float64),
+            requires_grad=True,
         )
 
         self._params = list(model.parameters())
