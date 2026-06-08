@@ -1,9 +1,18 @@
 # Dataset (téléchargé automatiquement par torchvision)
-data/
+/data/
 
 # Résultats et figures (générés par les runs)
 results/
+results_*/
 figures/
+logs/
+wandb/
+
+# Donnees et artefacts recuperes des clusters
+izar_fetch/
+*.out
+*.err
+*.csv.tmp
 
 # Python
 __pycache__/

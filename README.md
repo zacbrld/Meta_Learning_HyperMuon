@@ -1,88 +1,53 @@
 # Meta Learning HyperMuon
 
-Ce depot contient des experiences de meta-learning appliquees a l'optimiseur
-Muon. L'objectif est de comparer Muon avec des baselines classiques, puis de
-tester des variantes HyperMuon ou certains hyperparametres de Muon sont appris
-automatiquement pendant l'entrainement.
+This repository studies Muon-style optimizers on CIFAR-10, with two goals:
 
-Le code entraine des modeles sur CIFAR-10 et logge les performances ainsi que
-les trajectoires d'hyperparametres dans des fichiers CSV.
+1. reproduce the CIFAR-10 part of Figure 1 from the Newton-Muon paper;
+2. test meta-learning of optimizer hyperparameters, starting with learning-rate
+   adaptation.
 
-## Idee generale
-
-Muon applique une mise a jour specifique aux parametres matriciels, basee sur :
-
-1. un momentum de type Nesterov ;
-2. une normalisation de Frobenius ;
-3. une orthogonalisation par iterations de Newton-Schulz ;
-4. un scaling RMS cible autour de `0.2` ;
-5. une mise a jour avec weight decay.
-
-Les parametres non matriciels, comme les biais et BatchNorm, sont optimises avec
-AdamW.
-
-HyperMuon reprend cette structure, mais apprend certains hyperparametres par
-hypergradient. Le gradient d'hyperparametre est obtenu avec une approximation
-proxy du type :
+The old proxy-based HyperMuon experiments are still kept, but the current main
+path is:
 
 ```text
-proxy = - somme_W <grad_W, update_W(theta)>
+fixed AdamW / Muon / Newton-Muon baselines
+        ->
+LR-only GD-UO meta-learning
+        ->
+momentum and Newton-Schulz hyperparameter learning
 ```
 
-Puis `proxy.backward()` donne un hypergradient sur les hyperparametres
-apprenables.
+Detailed experiment notes and commands are in [docs/EXPERIMENTS.md](docs/EXPERIMENTS.md).
+Cluster commands are in [docs/IZAR.md](docs/IZAR.md).
 
-## Optimiseurs disponibles
-
-Le script principal expose sept optimiseurs :
-
-- `sgd` : SGD avec momentum, learning rate schedule cosine.
-- `adamw` : AdamW standard, learning rate schedule cosine.
-- `hyperadam` : AdamW avec learning rate appris par hypergradient.
-- `muon` : Muon avec hyperparametres fixes.
-- `hypermuon_l1` : HyperMuon apprend seulement le learning rate `eta`.
-- `hypermuon_l2` : HyperMuon apprend `eta` et le momentum `mu`.
-- `hypermuon_l3` : HyperMuon apprend `eta`, `mu` et les coefficients
-  Newton-Schulz `a`, `b`, `c`.
-
-Les parametrisations utilisees dans HyperMuon sont :
-
-- `lr = exp(lr_raw)` pour garder un learning rate positif ;
-- `mu = sigmoid(mu_raw)` pour garder le momentum dans `(0, 1)` ;
-- `a`, `b`, `c` sont appris directement au niveau 3.
-
-## Modeles
-
-Deux modeles sont fournis :
-
-- `mlp` : MLP a 3 couches pour CIFAR-10, avec des poids 2D adaptes a Muon.
-- `resnet` : ResNet-20 CIFAR-10, avec augmentation de donnees activee.
-
-Le split CIFAR-10 est deterministe :
-
-- 45 000 images train ;
-- 5 000 images validation ;
-- 10 000 images test.
-
-## Structure du depot
+## Repository Layout
 
 ```text
-train.py                 boucle principale d'entrainement
-plot.py                  generation des figures depuis results/*.csv
-run_all.sh               lance plusieurs experiences puis genere les figures
-optimizers/
-  sgd.py                 wrapper SGD
-  adamw.py               wrapper AdamW
-  muon.py                Muon fixe
-  hyperadam.py           AdamW avec learning rate appris
-  hypermuon.py           HyperMuon L1/L2/L3
 models/
-  mlp.py                 MLP CIFAR-10
-  resnet.py              ResNet-20 CIFAR-10
-utils/
-  data.py                dataloaders CIFAR-10
-  logger.py              logger CSV
+  mlp.py                 legacy CIFAR MLP
+  resnet.py              legacy CIFAR ResNet-20
+  residual_mlp.py        32-layer residual MLP for Newton-Muon CIFAR
+
+optimizers/
+  adamw.py               legacy AdamW wrapper
+  sgd.py                 legacy SGD wrapper
+  muon.py                fixed Muon
+  newton_muon.py         fixed Newton-Muon
+  hyperadam.py           legacy proxy HyperAdam
+  hypermuon.py           legacy proxy HyperMuon L1/L2/L3
+  gduo_lr.py             LR-only GD-UO AdamW/Muon/Newton-Muon
+
+train.py                 legacy proxy experiments on MLP/ResNet
+plot.py                  legacy plots
+run_hypermuon_izar.slurm legacy Izar launcher
+
+train_cifar_fig1.py      CIFAR Figure 1 and GD-UO training script
+plot_cifar_fig1.py       accuracy vs step/time plots
+run_cifar_fig1_izar.slurm fixed AdamW/Muon/Newton-Muon array
+run_cifar_gduo_izar.slurm LR-only GD-UO array
 ```
+
+Generated data, logs, figures, and fetched Izar outputs are ignored by git.
 
 ## Installation
 
@@ -90,97 +55,53 @@ utils/
 pip install -r requirements.txt
 ```
 
-PyTorch utilisera CUDA automatiquement si un GPU est disponible.
+PyTorch uses CUDA automatically when a GPU is available.
 
-## Lancer une experience
+## Current Fixed Baseline
 
-Exemple avec HyperMuon niveau 3 sur le MLP :
+Reproduce the CIFAR-10 panel of Figure 1:
+
+```bash
+python train_cifar_fig1.py --optimizer adamw
+python train_cifar_fig1.py --optimizer muon
+python train_cifar_fig1.py --optimizer newton_muon
+```
+
+Plot:
+
+```bash
+python plot_cifar_fig1.py \
+  --results_dir results_cifar_fig1 \
+  --output figures/cifar_fig1_repro.png
+```
+
+## Current Meta-Learning Track
+
+Run LR-only GD-UO variants:
+
+```bash
+python train_cifar_fig1.py --optimizer adamw_gduo_lr --min_lr_ratio 1.0
+python train_cifar_fig1.py --optimizer muon_gduo_lr --min_lr_ratio 1.0
+python train_cifar_fig1.py --optimizer newton_muon_gduo_lr --min_lr_ratio 1.0
+```
+
+For Muon and Newton-Muon this learns only the matrix learning rate. Momentum,
+Newton-Schulz coefficients, ridge, EWMA beta, and refresh interval are fixed for
+now.
+
+## Legacy Proxy Track
+
+The original HyperMuon experiments are still available:
 
 ```bash
 python train.py --model mlp --optimizer hypermuon_l3 --seed 0
+python train.py --model resnet --optimizer hypermuon_l3 --seed 0
 ```
 
-Exemple avec Muon fixe sur ResNet-20 :
-
-```bash
-python train.py --model resnet --optimizer muon --seed 0
-```
-
-Arguments principaux :
-
-```bash
-python train.py \
-  --model mlp \
-  --optimizer hypermuon_l3 \
-  --seed 0 \
-  --epochs 100 \
-  --batch_size 128 \
-  --results_dir results/
-```
-
-Par defaut, le nombre d'epochs est :
-
-- `100` pour `mlp` ;
-- `200` pour `resnet`.
-
-## Lancer la grille d'experiences
-
-```bash
-bash run_all.sh
-```
-
-Dans son etat actuel, `run_all.sh` lance tous les optimiseurs sur `mlp` avec
-`seed=0`, puis appelle `plot.py`. Pour inclure ResNet ou plusieurs seeds, il
-faut modifier les variables `MODELS` et `SEEDS` dans ce script.
-
-## Resultats et figures
-
-Chaque run produit un fichier CSV dans `results/`, par exemple :
+This track uses the local proxy:
 
 ```text
-results/mlp_hypermuon_l3_seed0.csv
+proxy = - sum_W <grad_W, update_W(theta)>
 ```
 
-Les colonnes principales sont :
-
-- pertes train et validation ;
-- accuracy validation et test final ;
-- valeurs courantes de `lr`, `mu`, `a`, `b`, `c` ;
-- normes d'hypergradient ;
-- `update_rms`.
-
-Pour generer les figures :
-
-```bash
-python plot.py --results_dir results/ --output_dir figures/
-```
-
-Les figures produites comparent notamment :
-
-- validation loss vs steps ;
-- validation accuracy vs epochs ;
-- accuracy test finale ;
-- trajectoires des hyperparametres HyperMuon-L3 ;
-- normes des hypergradients ;
-- RMS des mises a jour Muon/HyperMuon.
-
-## Ce que le projet teste
-
-La question experimentale centrale est :
-
-```text
-Peut-on ameliorer ou stabiliser Muon en apprenant automatiquement ses
-hyperparametres pendant l'entrainement ?
-```
-
-Les niveaux HyperMuon permettent de separer l'effet de chaque famille
-d'hyperparametres :
-
-- L1 teste surtout l'adaptation du learning rate ;
-- L2 ajoute l'adaptation du momentum ;
-- L3 teste aussi si les coefficients Newton-Schulz fixes de Muon peuvent etre
-  ajustes par meta-learning.
-
-Les baselines `sgd`, `adamw`, `hyperadam` et `muon` servent a verifier si les
-gains viennent vraiment de HyperMuon, ou simplement du choix d'un meilleur
-optimiseur ou d'un learning rate adapte.
+It is useful as a baseline, but it is not the current main meta-learning method.

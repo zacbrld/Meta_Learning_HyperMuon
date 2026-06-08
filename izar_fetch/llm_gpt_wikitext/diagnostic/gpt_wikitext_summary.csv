@@ -1,0 +1,6 @@
+optimizer,status,array_job,printed_job_id,printed_optimizer,num_train_points,num_eval_points,final_iter,final_val_loss,final_val_pp,final_val_acc,best_finite_iter,best_finite_val_loss,best_finite_val_pp,best_finite_val_acc,last_finite_train_iter,first_nan_train_iter,mean_iter_dt_sec,err_nonempty,err_excerpt
+adamw,COMPLETED,2965461_0,2965462,adamw,40,11,2000,4.472,87.513,0.299923,2000,4.472,87.513,0.299923,2000,,0.4804125000000001,False,
+muon,COMPLETED,2965521_1,2965521,muon,40,11,2000,4.096,60.127,0.341239,2000,4.096,60.127,0.341239,2000,,0.5335,False,
+newton-muon,COMPLETED_WITH_NAN,2965638_2,2965638,newton-muon,40,11,2000,nan,nan,0.0,1400,4.159,64.035,0.334318,1400,1450,0.6079642857142857,False,
+muon_failed_data_prep,FAILED_DATA_PREP,2965461_1,2965463,muon,0,0,,,,,,,,,,,0.0,True,EOFError
+newton-muon_failed_lr0.02,FAILED_DIVERGED,2965461_2,2965461,newton-muon,3,1,0,10.919,55212.447,8.6e-05,0,10.919,55212.447,8.6e-05,100,150,0.604,True,torch._C._LinAlgError: linalg.svd: The algorithm failed to converge because the input matrix is ill-conditioned or has too many repeated singular values (error code: 511).

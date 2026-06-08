@@ -12,6 +12,8 @@ Non-matrix params (bias, BN) are handled by AdamW.
 """
 
 import math
+from typing import Optional
+
 import torch
 import torch.nn as nn
 
@@ -79,7 +81,11 @@ class MuonOptimizer:
         ns_iters: int = 5,
         adamw_lr: float = 1e-3,
         adamw_wd: float = 0.01,
+        adamw_betas: tuple[float, float] = (0.9, 0.999),
+        matrix_param_names: Optional[set[str]] = None,
     ):
+        self._base_lr = lr
+        self._base_adamw_lr = adamw_lr
         self._lr = lr
         self._mu = momentum
         self._wd = weight_decay
@@ -90,15 +96,19 @@ class MuonOptimizer:
 
         # Split parameters into Muon (dim >= 2) and AdamW (dim < 2)
         muon_params, adamw_params = [], []
-        for p in model.parameters():
-            if p.dim() >= 2:
+        for name, p in model.named_parameters():
+            use_muon = p.dim() >= 2
+            if matrix_param_names is not None:
+                use_muon = name in matrix_param_names
+
+            if use_muon:
                 muon_params.append(p)
             else:
                 adamw_params.append(p)
 
         self._muon_params = muon_params
         self._adamw_optim = torch.optim.AdamW(
-            adamw_params, lr=adamw_lr, weight_decay=adamw_wd
+            adamw_params, lr=adamw_lr, weight_decay=adamw_wd, betas=adamw_betas
         ) if adamw_params else None
 
         # Momentum buffers
@@ -163,6 +173,13 @@ class MuonOptimizer:
 
         if self._adamw_optim is not None:
             self._adamw_optim.step()
+
+    def set_lr_scale(self, scale: float):
+        """Scale both Muon and AdamW learning rates from their base values."""
+        self._lr = self._base_lr * scale
+        if self._adamw_optim is not None:
+            for group in self._adamw_optim.param_groups:
+                group["lr"] = self._base_adamw_lr * scale
 
     def get_metrics(self) -> dict:
         return {
