@@ -17,4 +17,4 @@ done
 
 echo ""
 echo "=== All runs complete. Generating figures... ==="
-python plot.py
+python generate_plots.py

@@ -11,7 +11,6 @@ Files:
 
 ```text
 train.py
-plot.py
 slurm/run_hypermuon_izar.slurm
 optimizers/hyperadam.py
 optimizers/hypermuon.py
@@ -56,7 +55,6 @@ Files:
 
 ```text
 train_cifar_fig1.py
-plot_cifar_fig1.py
 slurm/run_cifar_fig1_izar.slurm
 models/residual_mlp.py
 optimizers/muon.py
@@ -98,9 +96,7 @@ sbatch --array=0-2 slurm/run_cifar_fig1_izar.slurm
 Plot:
 
 ```bash
-python plot_cifar_fig1.py \
-  --results_dir results_cifar_fig1 \
-  --output figures/cifar_fig1_repro.png
+python generate_plots.py --plots baselines
 ```
 
 Latest recovered CIFAR fixed-baseline result:

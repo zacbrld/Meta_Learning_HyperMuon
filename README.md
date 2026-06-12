@@ -66,9 +66,6 @@ generate_plots.py
 utils/plot_utils.py
     Shared plotting, log parsing, and figure generation utilities.
 
-plot_paper_*.py
-    Thin wrappers kept for regenerating one figure at a time.
-
 train_cifar_fig1.py
     CIFAR-10 training script used for the fixed AdamW, Muon, and Newton--Muon
     reproduction.
