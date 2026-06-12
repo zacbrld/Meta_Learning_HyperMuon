@@ -34,9 +34,9 @@ def selected_plots(names):
     return {name: PLOTS[name] for name in names}
 
 
-def main():
-    args = parse_args()
-    for name, make_plot in selected_plots(args.plots).items():
+def main(plot_names=None):
+    names = plot_names if plot_names is not None else parse_args().plots
+    for name, make_plot in selected_plots(names).items():
         result = make_plot()
         output = result[0] if isinstance(result, tuple) else result
         print(f"{name}: {Path(output)}")

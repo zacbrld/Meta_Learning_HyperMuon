@@ -1,0 +1,151 @@
+optimizer,variant,label,iter,val_loss
+adam,baseline,Baseline,200,6.067
+adam,baseline,Baseline,400,5.629
+adam,baseline,Baseline,600,5.318
+adam,baseline,Baseline,800,5.068
+adam,baseline,Baseline,1000,4.867
+adam,baseline,Baseline,1200,4.723
+adam,baseline,Baseline,1400,4.605
+adam,baseline,Baseline,1600,4.526
+adam,baseline,Baseline,1800,4.485
+adam,baseline,Baseline,2000,4.472
+muon,baseline,Baseline,200,5.877
+muon,baseline,Baseline,400,5.267
+muon,baseline,Baseline,600,4.942
+muon,baseline,Baseline,800,4.685
+muon,baseline,Baseline,1000,4.489
+muon,baseline,Baseline,1200,4.345
+muon,baseline,Baseline,1400,4.23
+muon,baseline,Baseline,1600,4.149
+muon,baseline,Baseline,1800,4.108
+muon,baseline,Baseline,2000,4.096
+newton,baseline,Baseline,200,5.884
+newton,baseline,Baseline,400,5.311
+newton,baseline,Baseline,600,4.921
+newton,baseline,Baseline,800,4.658
+newton,baseline,Baseline,1000,4.454
+newton,baseline,Baseline,1200,4.283
+newton,baseline,Baseline,1400,4.168
+newton,baseline,Baseline,1600,4.096
+newton,baseline,Baseline,1800,4.059
+newton,baseline,Baseline,2000,4.05
+adam,global,LR+momentum global,100,6.156
+adam,global,LR+momentum global,200,5.718
+adam,global,LR+momentum global,300,5.431
+adam,global,LR+momentum global,400,5.16
+adam,global,LR+momentum global,500,4.906
+adam,global,LR+momentum global,600,4.706
+adam,global,LR+momentum global,700,4.553
+adam,global,LR+momentum global,800,4.432
+adam,global,LR+momentum global,900,4.336
+adam,global,LR+momentum global,1000,4.244
+adam,global,LR+momentum global,1100,4.166
+adam,global,LR+momentum global,1200,4.103
+adam,global,LR+momentum global,1300,4.033
+adam,global,LR+momentum global,1400,3.987
+adam,global,LR+momentum global,1500,3.948
+adam,global,LR+momentum global,1600,3.914
+adam,global,LR+momentum global,1700,3.897
+adam,global,LR+momentum global,1800,3.882
+adam,global,LR+momentum global,1900,3.875
+adam,global,LR+momentum global,2000,3.882
+adam,layerwise,LR+momentum layerwise,100,6.155
+adam,layerwise,LR+momentum layerwise,200,5.71
+adam,layerwise,LR+momentum layerwise,300,5.416
+adam,layerwise,LR+momentum layerwise,400,5.136
+adam,layerwise,LR+momentum layerwise,500,4.87
+adam,layerwise,LR+momentum layerwise,600,4.655
+adam,layerwise,LR+momentum layerwise,700,4.493
+adam,layerwise,LR+momentum layerwise,800,4.373
+adam,layerwise,LR+momentum layerwise,900,4.26
+adam,layerwise,LR+momentum layerwise,1000,4.151
+adam,layerwise,LR+momentum layerwise,1100,4.054
+adam,layerwise,LR+momentum layerwise,1200,3.977
+adam,layerwise,LR+momentum layerwise,1300,3.911
+adam,layerwise,LR+momentum layerwise,1400,3.865
+adam,layerwise,LR+momentum layerwise,1500,3.827
+adam,layerwise,LR+momentum layerwise,1600,3.793
+adam,layerwise,LR+momentum layerwise,1700,3.774
+adam,layerwise,LR+momentum layerwise,1800,3.76
+adam,layerwise,LR+momentum layerwise,1900,3.752
+adam,layerwise,LR+momentum layerwise,2000,3.758
+muon,layerwise,LR+momentum layerwise,100,5.74
+muon,layerwise,LR+momentum layerwise,200,5.185
+muon,layerwise,LR+momentum layerwise,300,4.729
+muon,layerwise,LR+momentum layerwise,400,4.382
+muon,layerwise,LR+momentum layerwise,500,4.142
+muon,layerwise,LR+momentum layerwise,600,4.002
+muon,layerwise,LR+momentum layerwise,700,3.899
+muon,layerwise,LR+momentum layerwise,800,3.821
+muon,layerwise,LR+momentum layerwise,900,3.759
+muon,layerwise,LR+momentum layerwise,1000,3.696
+muon,layerwise,LR+momentum layerwise,1100,3.647
+muon,layerwise,LR+momentum layerwise,1200,3.607
+muon,layerwise,LR+momentum layerwise,1300,3.569
+muon,layerwise,LR+momentum layerwise,1400,3.54
+muon,layerwise,LR+momentum layerwise,1500,3.517
+muon,layerwise,LR+momentum layerwise,1600,3.497
+muon,layerwise,LR+momentum layerwise,1700,3.484
+muon,layerwise,LR+momentum layerwise,1800,3.474
+muon,layerwise,LR+momentum layerwise,1900,3.468
+muon,layerwise,LR+momentum layerwise,2000,3.477
+muon,global,LR+momentum global,100,5.744
+muon,global,LR+momentum global,200,5.219
+muon,global,LR+momentum global,300,4.789
+muon,global,LR+momentum global,400,4.505
+muon,global,LR+momentum global,500,4.234
+muon,global,LR+momentum global,600,4.074
+muon,global,LR+momentum global,700,3.961
+muon,global,LR+momentum global,800,3.883
+muon,global,LR+momentum global,900,3.821
+muon,global,LR+momentum global,1000,3.762
+muon,global,LR+momentum global,1100,3.716
+muon,global,LR+momentum global,1200,3.683
+muon,global,LR+momentum global,1300,3.642
+muon,global,LR+momentum global,1400,3.611
+muon,global,LR+momentum global,1500,3.585
+muon,global,LR+momentum global,1600,3.556
+muon,global,LR+momentum global,1700,3.538
+muon,global,LR+momentum global,1800,3.518
+muon,global,LR+momentum global,1900,3.501
+muon,global,LR+momentum global,2000,3.491
+newton,global,LR+momentum global,100,5.746
+newton,global,LR+momentum global,200,5.269
+newton,global,LR+momentum global,300,4.939
+newton,global,LR+momentum global,400,4.727
+newton,global,LR+momentum global,500,4.592
+newton,global,LR+momentum global,600,4.5
+newton,global,LR+momentum global,700,4.425
+newton,global,LR+momentum global,800,4.375
+newton,global,LR+momentum global,900,4.332
+newton,global,LR+momentum global,1000,4.288
+newton,global,LR+momentum global,1100,4.254
+newton,global,LR+momentum global,1200,4.229
+newton,global,LR+momentum global,1300,4.203
+newton,global,LR+momentum global,1400,4.188
+newton,global,LR+momentum global,1500,4.175
+newton,global,LR+momentum global,1600,4.162
+newton,global,LR+momentum global,1700,4.155
+newton,global,LR+momentum global,1800,4.151
+newton,global,LR+momentum global,1900,4.148
+newton,global,LR+momentum global,2000,4.158
+newton,layerwise,LR+momentum layerwise,100,5.749
+newton,layerwise,LR+momentum layerwise,200,5.272
+newton,layerwise,LR+momentum layerwise,300,4.916
+newton,layerwise,LR+momentum layerwise,400,4.592
+newton,layerwise,LR+momentum layerwise,500,4.328
+newton,layerwise,LR+momentum layerwise,600,4.121
+newton,layerwise,LR+momentum layerwise,700,3.972
+newton,layerwise,LR+momentum layerwise,800,3.88
+newton,layerwise,LR+momentum layerwise,900,3.812
+newton,layerwise,LR+momentum layerwise,1000,3.757
+newton,layerwise,LR+momentum layerwise,1100,3.712
+newton,layerwise,LR+momentum layerwise,1200,3.679
+newton,layerwise,LR+momentum layerwise,1300,3.649
+newton,layerwise,LR+momentum layerwise,1400,3.628
+newton,layerwise,LR+momentum layerwise,1500,3.611
+newton,layerwise,LR+momentum layerwise,1600,3.596
+newton,layerwise,LR+momentum layerwise,1700,3.588
+newton,layerwise,LR+momentum layerwise,1800,3.582
+newton,layerwise,LR+momentum layerwise,1900,3.579
+newton,layerwise,LR+momentum layerwise,2000,3.588

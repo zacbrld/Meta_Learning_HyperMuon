@@ -1,9 +1,0 @@
-optimizer,status,final_iter,final_val_loss,final_val_pp,final_val_acc,best_finite_iter,best_finite_val_loss,best_finite_val_pp,best_finite_val_acc,first_nan_train_iter,mean_iter_dt_sec
-adamw,COMPLETED,2000.0,4.472,87.513,0.299923,2000.0,4.472,87.513,0.299923,,0.4804125000000001
-muon,COMPLETED,2000.0,4.096,60.127,0.341239,2000.0,4.096,60.127,0.341239,,0.5335
-newton-muon,COMPLETED_WITH_NAN,2000.0,,,0.0,1400.0,4.159,64.035,0.334318,1450.0,0.6079642857142857
-muon_failed_data_prep,FAILED_DATA_PREP,,,,,,,,,,0.0
-newton-muon_failed_lr0.02,FAILED_DIVERGED,0.0,10.919,55212.447,8.6e-05,0.0,10.919,55212.447,8.6e-05,150.0,0.604
-newton-muon stable (lr0p005_ridge0p5_clip3),COMPLETED,2000.0,4.05,57.423,0.344421,2000.0,4.05,57.423,0.344421,,0.6146250000000001
-newton-muon stable (lr0p004_ridge1p0_clip3),COMPLETED,2000.0,4.08,59.15,0.340409,2000.0,4.08,59.15,0.340409,,0.5618749999999999
-newton-muon stable (lr0p004_ridge0p5_clip3),COMPLETED,2000.0,4.097,60.169,0.337765,2000.0,4.097,60.169,0.337765,,0.653475

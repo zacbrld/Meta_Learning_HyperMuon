@@ -1,5 +1,7 @@
-# Dataset (téléchargé automatiquement par torchvision)
-/data/
+# Raw datasets are downloaded automatically.
+/data/*
+!/data/plot_inputs/
+!/data/plot_inputs/*.csv
 
 # Résultats et figures (générés par les runs)
 results/

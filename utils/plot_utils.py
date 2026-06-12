@@ -1,7 +1,6 @@
 import logging
-import re
 from pathlib import Path
-from typing import Optional, Union
+from typing import Union
 
 import matplotlib
 
@@ -13,38 +12,15 @@ import pandas as pd
 
 
 ROOT = Path(__file__).resolve().parents[1]
-PathLike = Union[Path, str]
+PLOT_DATA = ROOT / "data" / "plot_inputs"
+PathLike = Union[str, Path]
 
-EVAL_RE = re.compile(
-    r">Eval: Iter=(\d+) \(([0-9.]+) epochs\) val_loss=([0-9.]+) "
-    r"val_pp=([0-9.]+) val_acc=([0-9.eE+-]+)"
-)
-
-GDUO_RE = re.compile(
-    r"\[GDUO-Muon\] step=(\d+) "
-    r"lr_scale_avg=([0-9.eE+-]+) \(min=([0-9.eE+-]+), max=([0-9.eE+-]+)\) "
-    r"lr_bound_frac=([0-9.eE+-]+) "
-    r"momentum_avg=([0-9.eE+-]+) \(min=([0-9.eE+-]+), max=([0-9.eE+-]+)\)"
-)
-
-BASELINE_COLORS = {
+COLORS = {
     "adamw": "#3B6EA8",
     "muon": "#D97904",
     "newton": "#2F8F5B",
-}
-
-SCOPE_COLORS = {
-    "baseline": "#3B6EA8",
-    "global": "#D97904",
-    "layerwise": "#2F8F5B",
-}
-
-GEOMETRY_COLORS = {
-    "Muon LR+momentum layerwise": "#111111",
-    "Adam/Muon gate": "#3B6EA8",
-    "Muon/Newton-Muon gate": "#D97904",
-    "AdaGrad-EMA/Muon": "#2F8F5B",
-    "SOAP-lite/Muon": "#8B5FBF",
+    "soap": "#8B5FBF",
+    "black": "#111111",
 }
 
 LAYER_COMPONENTS = ["attn_qkv", "attn_proj", "mlp_fc", "mlp_proj", "pos_emb"]
@@ -71,12 +47,7 @@ LAYER_MARKERS = {
 }
 
 
-def set_paper_style(
-    font_size: float = 7.8,
-    label_size: float = 8.2,
-    legend_size: float = 7.0,
-    line_width: float = 0.95,
-) -> None:
+def set_paper_style(font_size=7.8, label_size=8.2, legend_size=7.0, line_width=0.95):
     plt.rcParams.update(
         {
             "font.family": "serif",
@@ -113,7 +84,7 @@ def set_paper_style(
     )
 
 
-def paper_axis(ax, x_bins: int = 5, y_bins: int = 5, integer_x: bool = False) -> None:
+def paper_axis(ax, x_bins=5, y_bins=5, integer_x=False):
     ax.xaxis.set_major_locator(MaxNLocator(nbins=x_bins, integer=integer_x))
     ax.yaxis.set_major_locator(MaxNLocator(nbins=y_bins))
     ax.xaxis.set_minor_locator(AutoMinorLocator(2))
@@ -121,7 +92,7 @@ def paper_axis(ax, x_bins: int = 5, y_bins: int = 5, integer_x: bool = False) ->
     ax.tick_params(which="both", top=False, right=False)
 
 
-def save_figure(fig, output: Path) -> None:
+def save_figure(fig, output):
     output = Path(output)
     output.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(output.with_suffix(".pdf"), bbox_inches="tight", pad_inches=0.015)
@@ -129,123 +100,24 @@ def save_figure(fig, output: Path) -> None:
     plt.close(fig)
 
 
-def read_text(path: Path) -> str:
-    return Path(path).read_text(errors="replace")
-
-
-def parse_eval_log(path: Path, label: str = "", optimizer: str = "", variant: str = "") -> pd.DataFrame:
-    if not Path(path).exists():
-        return pd.DataFrame()
-    rows = []
-    for match in EVAL_RE.finditer(read_text(path)):
-        rows.append(
-            {
-                "iter": int(match.group(1)),
-                "val_loss": float(match.group(3)),
-                "val_ppl": float(match.group(4)),
-                "val_acc": float(match.group(5)),
-                "label": label,
-                "optimizer": optimizer,
-                "variant": variant,
-                "source": str(path),
-            }
-        )
-    df = pd.DataFrame(rows)
-    if not df.empty:
-        df = df[df["iter"] > 0].copy()
-    return df
-
-
-def load_cifar_test_curves(cifar_dir: Path) -> pd.DataFrame:
-    paths = sorted(Path(cifar_dir).glob("cifar10_resmlp32_*_seed0.csv"))
-    if not paths:
-        raise FileNotFoundError(f"No CIFAR CSVs found in {cifar_dir}")
-    frames = []
-    for path in paths:
-        frame = pd.read_csv(path)
-        frame["source"] = path.name
-        frames.append(frame)
-    df = pd.concat(frames, ignore_index=True)
-    df = df[df["eval_split"] == "test"].copy()
-    return df.dropna(subset=["epoch", "eval_accuracy"])
-
-
-def load_gpt_curves(gpt_curves: Path) -> pd.DataFrame:
-    if not Path(gpt_curves).exists():
-        raise FileNotFoundError(f"Missing GPT curves CSV: {gpt_curves}")
-    return pd.read_csv(gpt_curves)
-
-
-def best_stable_newton_name(gpt_df: pd.DataFrame) -> str:
-    stable = gpt_df[gpt_df["optimizer"].str.startswith("newton stable", na=False)]
-    finals = (
-        stable.dropna(subset=["val_loss"])
-        .sort_values(["optimizer", "iter"])
-        .groupby("optimizer", as_index=False)
-        .tail(1)
-        .sort_values("val_loss")
-    )
-    if finals.empty:
-        raise ValueError("No stable Newton-Muon curve found.")
-    return str(finals.iloc[0]["optimizer"])
-
-
-def log_metadata(path: Path) -> dict:
-    text = read_text(path)
-    opt = re.search(r"'opt': '([^']+)'", text)
-    kind = re.search(r"'muon_precond_kind': '([^']+)'", text)
-    configured_iter = re.search(r"'iterations': (\d+)", text)
-    return {
-        "opt": opt.group(1) if opt else "",
-        "kind": kind.group(1) if kind else "",
-        "configured_iter": int(configured_iter.group(1)) if configured_iter else 0,
-    }
-
-
-def choose_best_candidate(paths: list[Path], opt: str, kind: str = "") -> Optional[Path]:
-    candidates = []
-    for path in paths:
-        meta = log_metadata(path)
-        if meta["opt"] != opt:
-            continue
-        if kind and meta["kind"] != kind:
-            continue
-        df = parse_eval_log(path, "_candidate")
-        if df.empty:
-            continue
-        max_iter = int(df["iter"].max())
-        final_loss = float(df.sort_values("iter").iloc[-1]["val_loss"])
-        candidates.append((max_iter, meta["configured_iter"], -final_loss, path.stat().st_mtime, path))
-    if not candidates:
-        return None
-    candidates.sort(reverse=True)
-    return candidates[0][-1]
-
-
 def make_baseline_figure(
-    cifar_dir: PathLike = ROOT / "izar_fetch" / "results_cifar_fig1",
-    gpt_curves: PathLike = ROOT
-    / "izar_fetch"
-    / "llm_newton_stability"
-    / "diagnostic"
-    / "gpt_wikitext_with_stable_newton_curves.csv",
+    cifar_csv: PathLike = PLOT_DATA / "cifar_baselines.csv",
+    wikitext_csv: PathLike = PLOT_DATA / "wikitext_baselines.csv",
     output: PathLike = ROOT / "figures" / "paper_like" / "figure1_cifar_wikitext_baselines",
-) -> Path:
+):
     set_paper_style(font_size=7.6, label_size=7.9, legend_size=7.0, line_width=0.95)
-    cifar_df = load_cifar_test_curves(Path(cifar_dir))
-    gpt_df = load_gpt_curves(Path(gpt_curves))
-    newton_name = best_stable_newton_name(gpt_df)
+    cifar = pd.read_csv(cifar_csv)
+    wikitext = pd.read_csv(wikitext_csv)
     fig, axes = plt.subplots(2, 1, figsize=(3.35, 4.05))
 
     cifar_specs = [
-        ("adamw", "AdamW", BASELINE_COLORS["adamw"]),
-        ("muon", "Muon", BASELINE_COLORS["muon"]),
-        ("newton_muon", "Newton-Muon", BASELINE_COLORS["newton"]),
+        ("adamw", "AdamW", COLORS["adamw"]),
+        ("muon", "Muon", COLORS["muon"]),
+        ("newton_muon", "Newton-Muon", COLORS["newton"]),
     ]
-    for opt, label, color in cifar_specs:
-        sub = cifar_df[cifar_df["optimizer"] == opt].sort_values("epoch")
-        if not sub.empty:
-            axes[0].plot(sub["step"], 100.0 * sub["eval_accuracy"], label=label, color=color)
+    for optimizer, label, color in cifar_specs:
+        sub = cifar[cifar["optimizer"] == optimizer].sort_values("step")
+        axes[0].plot(sub["step"], 100.0 * sub["eval_accuracy"], label=label, color=color)
 
     axes[0].set_ylabel(r"$\mathrm{Test\ accuracy}\;(\%)$")
     axes[0].set_xlim(0, 1300)
@@ -253,15 +125,13 @@ def make_baseline_figure(
     paper_axis(axes[0])
 
     gpt_specs = [
-        ("adamw", "AdamW", BASELINE_COLORS["adamw"]),
-        ("muon", "Muon", BASELINE_COLORS["muon"]),
-        (newton_name, "Newton-Muon", BASELINE_COLORS["newton"]),
+        ("AdamW", COLORS["adamw"]),
+        ("Muon", COLORS["muon"]),
+        ("Newton-Muon", COLORS["newton"]),
     ]
-    for opt, label, color in gpt_specs:
-        sub = gpt_df[(gpt_df["optimizer"] == opt) & gpt_df["val_loss"].notna()].sort_values("iter")
-        sub = sub[sub["iter"] > 0]
-        if not sub.empty:
-            axes[1].plot(sub["iter"], sub["val_loss"], label=label, color=color)
+    for optimizer, color in gpt_specs:
+        sub = wikitext[wikitext["optimizer"] == optimizer].sort_values("iter")
+        axes[1].plot(sub["iter"], sub["val_loss"], label=optimizer, color=color)
 
     axes[1].set_ylabel(r"$\mathrm{Validation\ loss}$")
     axes[1].set_xlim(0, 2000)
@@ -280,148 +150,40 @@ def make_baseline_figure(
         columnspacing=0.85,
         bbox_to_anchor=(0.5, 1.025),
     )
-
     fig.subplots_adjust(left=0.20, right=0.99, bottom=0.125, top=0.91, hspace=0.12)
-    output = Path(output)
     save_figure(fig, output)
-    return output.with_suffix(".pdf")
-
-
-def load_scope_baselines(path: Path) -> pd.DataFrame:
-    raw = pd.read_csv(path)
-    newton = best_stable_newton_name(raw)
-    specs = [
-        ("adamw", "adam", "Baseline"),
-        ("muon", "muon", "Baseline"),
-        (newton, "newton", "Baseline"),
-    ]
-    frames = []
-    for opt, optimizer, label in specs:
-        sub = raw[(raw["optimizer"] == opt) & raw["val_loss"].notna() & (raw["iter"] > 0)].copy()
-        sub = sub[["iter", "val_loss"]]
-        sub["optimizer"] = optimizer
-        sub["variant"] = "baseline"
-        sub["label"] = label
-        frames.append(sub)
-    return pd.concat(frames, ignore_index=True)
-
-
-def load_gduo_scope_curves(
-    baseline_curves: PathLike = ROOT
-    / "izar_fetch"
-    / "llm_newton_stability"
-    / "diagnostic"
-    / "gpt_wikitext_with_stable_newton_curves.csv",
-) -> tuple[pd.DataFrame, pd.DataFrame]:
-    frames = [load_scope_baselines(Path(baseline_curves))]
-    frames.extend(
-        [
-            parse_eval_log(
-                ROOT / "izar_fetch" / "recent_gating_precond" / "gpt_gduo_missing_3028678_0.out",
-                "LR+momentum global",
-                "adam",
-                "global",
-            ),
-            parse_eval_log(
-                ROOT / "izar_fetch" / "recent_gating_precond" / "gpt_gduo_missing_3028678_1.out",
-                "LR+momentum layerwise",
-                "adam",
-                "layerwise",
-            ),
-            parse_eval_log(
-                ROOT / "izar_fetch" / "current_meta_logs" / "gpt_layer_wiki_3005857_1.out",
-                "LR+momentum layerwise",
-                "muon",
-                "layerwise",
-            ),
-            parse_eval_log(
-                ROOT / "izar_fetch" / "current_meta_logs" / "gpt_meta_follow_3005881_2.out",
-                "LR+momentum global",
-                "muon",
-                "global",
-            ),
-            parse_eval_log(
-                ROOT / "izar_fetch" / "recent_gating_precond" / "gpt_gduo_missing_3028678_2.out",
-                "LR+momentum global",
-                "newton",
-                "global",
-            ),
-            parse_eval_log(
-                ROOT / "izar_fetch" / "recent_gating_precond" / "gpt_gduo_missing_3028678_3.out",
-                "LR+momentum layerwise",
-                "newton",
-                "layerwise",
-            ),
-        ]
-    )
-
-    df = pd.concat([frame for frame in frames if not frame.empty], ignore_index=True)
-    df = df[df["iter"] <= 2000].copy()
-    expected = pd.DataFrame(
-        [
-            ("adam", "Baseline", "baseline"),
-            ("adam", "LR+momentum global", "global"),
-            ("adam", "LR+momentum layerwise", "layerwise"),
-            ("muon", "Baseline", "baseline"),
-            ("muon", "LR+momentum global", "global"),
-            ("muon", "LR+momentum layerwise", "layerwise"),
-            ("newton", "Baseline", "baseline"),
-            ("newton", "LR+momentum global", "global"),
-            ("newton", "LR+momentum layerwise", "layerwise"),
-        ],
-        columns=["optimizer", "label", "variant"],
-    )
-    observed = (
-        df.groupby(["optimizer", "label", "variant"], as_index=False)["iter"]
-        .max()
-        .rename(columns={"iter": "max_iter"})
-    )
-    coverage = expected.merge(observed, how="left", on=["optimizer", "label", "variant"])
-    coverage["max_iter"] = coverage["max_iter"].fillna(0).astype(int)
-    coverage["has_2000"] = coverage["max_iter"] >= 2000
-    return df, coverage
+    return Path(output).with_suffix(".pdf")
 
 
 def make_gduo_scope_figure(
-    baseline_curves: PathLike = ROOT
-    / "izar_fetch"
-    / "llm_newton_stability"
-    / "diagnostic"
-    / "gpt_wikitext_with_stable_newton_curves.csv",
+    curves_csv: PathLike = PLOT_DATA / "gduo_scopes.csv",
     output: PathLike = ROOT / "figures" / "paper_like" / "figure2_gduo_scopes",
-) -> tuple[Path, pd.DataFrame]:
+):
     set_paper_style(font_size=8.2, label_size=8.5, legend_size=7.3, line_width=1.0)
-    df, coverage = load_gduo_scope_curves(baseline_curves)
+    curves = pd.read_csv(curves_csv)
     fig = plt.figure(figsize=(6.3, 4.35))
-    gs = fig.add_gridspec(2, 4, height_ratios=[1.0, 1.0], hspace=0.38, wspace=0.36)
+    grid = fig.add_gridspec(2, 4, height_ratios=[1.0, 1.0], hspace=0.38, wspace=0.36)
     axes = [
-        fig.add_subplot(gs[0, 0:2]),
-        fig.add_subplot(gs[0, 2:4]),
-        fig.add_subplot(gs[1, 1:3]),
+        fig.add_subplot(grid[0, 0:2]),
+        fig.add_subplot(grid[0, 2:4]),
+        fig.add_subplot(grid[1, 1:3]),
     ]
     panels = [
         ("adam", r"$\mathrm{AdamW}$"),
         ("muon", r"$\mathrm{Muon}$"),
         ("newton", r"$\mathrm{Newton{-}Muon}$"),
     ]
-    order = [
-        ("baseline", "Baseline", "-"),
-        ("global", "LR+momentum global", "--"),
-        ("layerwise", "LR+momentum layerwise", "-."),
+    variants = [
+        ("baseline", "Baseline", "-", COLORS["adamw"]),
+        ("global", "LR+momentum global", "--", COLORS["muon"]),
+        ("layerwise", "LR+momentum layerwise", "-.", COLORS["newton"]),
     ]
 
     for ax, (optimizer, panel_label) in zip(axes, panels):
-        sub_panel = df[df["optimizer"] == optimizer]
-        for variant, label, linestyle in order:
-            sub = sub_panel[(sub_panel["variant"] == variant) & (sub_panel["label"] == label)]
-            if not sub.empty:
-                ax.plot(
-                    sub.sort_values("iter")["iter"],
-                    sub.sort_values("iter")["val_loss"],
-                    color=SCOPE_COLORS[variant],
-                    linestyle=linestyle,
-                    label=label,
-                )
+        panel = curves[curves["optimizer"] == optimizer]
+        for variant, label, linestyle, color in variants:
+            sub = panel[(panel["variant"] == variant) & (panel["label"] == label)].sort_values("iter")
+            ax.plot(sub["iter"], sub["val_loss"], color=color, linestyle=linestyle, label=label)
         ax.text(0.97, 0.94, panel_label, transform=ax.transAxes, ha="right", va="top")
         ax.set_xlim(0, 2000)
         ax.set_ylim(3.35, 6.35)
@@ -447,92 +209,29 @@ def make_gduo_scope_figure(
         bbox_to_anchor=(0.5, 0.985),
     )
     fig.subplots_adjust(left=0.11, right=0.99, bottom=0.125, top=0.91)
-    output = Path(output)
     save_figure(fig, output)
-    coverage.to_csv(output.with_suffix(".coverage.csv"), index=False)
-    return output.with_suffix(".pdf"), coverage
-
-
-def load_geometry_curves(
-    recent_dir: PathLike = ROOT / "izar_fetch" / "recent_gating_precond",
-    best_muon_layerwise: PathLike = ROOT
-    / "izar_fetch"
-    / "current_meta_logs"
-    / "gpt_layer_wiki_3005857_1.out",
-) -> tuple[pd.DataFrame, pd.DataFrame]:
-    recent_logs = sorted(Path(recent_dir).glob("*.out"))
-    specs = [
-        ("Muon LR+momentum layerwise", Path(best_muon_layerwise), True),
-        ("Adam/Muon gate", choose_best_candidate(recent_logs, "adam-muon-gate"), False),
-        ("Muon/Newton-Muon gate", choose_best_candidate(recent_logs, "muon-newton-gate"), False),
-        ("AdaGrad-EMA/Muon", choose_best_candidate(recent_logs, "muon-precond-gate", "adagrad_ema"), False),
-        ("SOAP-lite/Muon", choose_best_candidate(recent_logs, "muon-precond-gate", "soap_lite"), False),
-    ]
-
-    frames = []
-    coverage_rows = []
-    for label, path, reference in specs:
-        if path is None:
-            coverage_rows.append(
-                {"label": label, "source": "", "max_iter": 0, "has_2000": False, "reference": reference}
-            )
-            continue
-        df = parse_eval_log(path, label)
-        df = df[df["iter"] <= 2000].copy()
-        max_iter = int(df["iter"].max()) if not df.empty else 0
-        df["has_2000"] = max_iter >= 2000
-        df["reference"] = reference
-        frames.append(df)
-        coverage_rows.append(
-            {
-                "label": label,
-                "source": str(path),
-                "max_iter": max_iter,
-                "has_2000": max_iter >= 2000,
-                "reference": reference,
-            }
-        )
-    curves = pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
-    coverage = pd.DataFrame(coverage_rows)
-    return curves, coverage
+    return Path(output).with_suffix(".pdf")
 
 
 def make_geometry_variants_figure(
-    recent_dir: PathLike = ROOT / "izar_fetch" / "recent_gating_precond",
-    best_muon_layerwise: PathLike = ROOT
-    / "izar_fetch"
-    / "current_meta_logs"
-    / "gpt_layer_wiki_3005857_1.out",
+    curves_csv: PathLike = PLOT_DATA / "geometry_variants.csv",
     output: PathLike = ROOT / "figures" / "paper_like" / "figure3_geometry_variants",
-) -> tuple[Path, pd.DataFrame]:
+):
     set_paper_style(font_size=8.0, label_size=8.5, legend_size=7.0, line_width=0.95)
-    curves, coverage = load_geometry_curves(recent_dir, best_muon_layerwise)
-    order = [
-        "Muon LR+momentum layerwise",
-        "Adam/Muon gate",
-        "Muon/Newton-Muon gate",
-        "AdaGrad-EMA/Muon",
-        "SOAP-lite/Muon",
-    ]
+    curves = pd.read_csv(curves_csv)
+    colors = {
+        "Muon LR+momentum layerwise": COLORS["black"],
+        "Adam/Muon gate": COLORS["adamw"],
+        "Muon/Newton-Muon gate": COLORS["muon"],
+        "AdaGrad-EMA/Muon": COLORS["newton"],
+        "SOAP-lite/Muon": COLORS["soap"],
+    }
+    order = list(colors)
     fig, ax = plt.subplots(figsize=(3.55, 2.45))
     for label in order:
         sub = curves[curves["label"] == label].sort_values("iter")
-        if sub.empty:
-            continue
-        row = coverage[coverage["label"] == label].iloc[0]
-        linestyle = "-" if bool(row.has_2000) else "--"
         linewidth = 1.15 if label == "Muon LR+momentum layerwise" else 0.9
-        alpha = 1.0 if bool(row.has_2000) or label == "Muon LR+momentum layerwise" else 0.72
-        legend_label = label if bool(row.has_2000) else rf"{label} ({int(row.max_iter)})"
-        ax.plot(
-            sub["iter"],
-            sub["val_loss"],
-            color=GEOMETRY_COLORS[label],
-            linestyle=linestyle,
-            linewidth=linewidth,
-            alpha=alpha,
-            label=legend_label,
-        )
+        ax.plot(sub["iter"], sub["val_loss"], color=colors[label], linewidth=linewidth, label=label)
     ax.set_xlim(0, 2000)
     ax.set_ylim(3.35, 5.95)
     ax.set_xlabel(r"$\mathrm{Training\ step}$")
@@ -540,51 +239,17 @@ def make_geometry_variants_figure(
     paper_axis(ax)
     ax.legend(frameon=False, loc="upper right", handlelength=2.0, borderaxespad=0.15)
     fig.subplots_adjust(left=0.145, right=0.985, bottom=0.185, top=0.985)
-    output = Path(output)
     save_figure(fig, output)
-    coverage.to_csv(output.with_suffix(".coverage.csv"), index=False)
-    return output.with_suffix(".pdf"), coverage
-
-
-def parse_gduo_aggregate_log(path: Path) -> pd.DataFrame:
-    rows = []
-    for match in GDUO_RE.finditer(read_text(path)):
-        rows.append(
-            {
-                "step": int(match.group(1)),
-                "lr_avg": float(match.group(2)),
-                "lr_min": float(match.group(3)),
-                "lr_max": float(match.group(4)),
-                "lr_bound_frac": float(match.group(5)),
-                "momentum_avg": float(match.group(6)),
-                "momentum_min": float(match.group(7)),
-                "momentum_max": float(match.group(8)),
-            }
-        )
-    if not rows:
-        raise ValueError(f"No GDUO-Muon lines found in {path}")
-    return pd.DataFrame(rows)
-
-
-def prepare_layerwise_final(path: PathLike) -> pd.DataFrame:
-    df = pd.read_csv(path)
-    df = df[df["use_muon"].astype(bool)].copy()
-    df = df[df["component"].isin(LAYER_COMPONENTS)].copy()
-    df["layer_plot"] = df["layer"].astype(float)
-    df.loc[df["component"] == "pos_emb", "layer_plot"] = -0.55
-    return df
+    return Path(output).with_suffix(".pdf")
 
 
 def make_muon_layerwise_figure(
-    final_csv: PathLike = ROOT
-    / "izar_fetch"
-    / "layerwise_3005859"
-    / "results"
-    / "gduo_layerwise_final.csv",
+    final_csv: PathLike = PLOT_DATA / "muon_layerwise_final.csv",
     output: PathLike = ROOT / "figures" / "paper_like" / "figure4_muon_layerwise_lr_momentum",
-) -> tuple[Path, pd.DataFrame]:
+):
     set_paper_style(font_size=7.6, label_size=7.9, legend_size=6.4, line_width=0.9)
-    final = prepare_layerwise_final(final_csv)
+    final = pd.read_csv(final_csv)
+    final = final[final["component"].isin(LAYER_COMPONENTS)].copy()
     fig, axes = plt.subplots(2, 1, figsize=(3.35, 4.05), sharex=True)
     ax_lr, ax_momentum = axes
     handles = []
@@ -592,8 +257,6 @@ def make_muon_layerwise_figure(
 
     for component in [component for component in LAYER_COMPONENTS if component != "pos_emb"]:
         sub = final[final["component"] == component].sort_values("layer_plot")
-        if sub.empty:
-            continue
         handle = ax_lr.plot(
             sub["layer_plot"],
             sub["lr_scale"],
@@ -627,9 +290,9 @@ def make_muon_layerwise_figure(
     ax_momentum.set_ylim(0.94, 0.976)
     fig.supxlabel(r"$\mathrm{Transformer\ block}$", y=0.008)
 
-    pos_emb = final[final["component"] == "pos_emb"]
-    if not pos_emb.empty:
-        pos = pos_emb.iloc[0]
+    pos = final[final["component"] == "pos_emb"]
+    if not pos.empty:
+        pos = pos.iloc[0]
         fig.text(
             0.745,
             0.962,
@@ -656,17 +319,14 @@ def make_muon_layerwise_figure(
         bbox_to_anchor=(0.34, 1.01),
     )
     fig.subplots_adjust(left=0.20, right=0.99, bottom=0.125, top=0.86, hspace=0.12)
-    output = Path(output)
     save_figure(fig, output)
-    final.to_csv(output.with_suffix(".final.csv"), index=False)
-    return output.with_suffix(".pdf"), final
+    return Path(output).with_suffix(".pdf")
 
 
-def make_all_paper_plots() -> list[Path]:
-    outputs = []
-    outputs.append(make_baseline_figure())
-    scope_output, _ = make_gduo_scope_figure()
-    geometry_output, _ = make_geometry_variants_figure()
-    layerwise_output, _ = make_muon_layerwise_figure()
-    outputs.extend([scope_output, geometry_output, layerwise_output])
-    return outputs
+def make_all_paper_plots():
+    return [
+        make_baseline_figure(),
+        make_gduo_scope_figure(),
+        make_geometry_variants_figure(),
+        make_muon_layerwise_figure(),
+    ]

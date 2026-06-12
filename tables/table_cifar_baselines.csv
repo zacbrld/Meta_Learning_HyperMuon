@@ -1,4 +1,0 @@
-optimizer,final_acc,best_acc
-adamw,0.6051,0.6098
-muon,0.6624,0.6639
-newton_muon,0.6733,0.6749

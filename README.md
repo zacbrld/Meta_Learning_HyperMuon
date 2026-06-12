@@ -1,156 +1,114 @@
 # Meta-Learning HyperMuon
 
-This project studies whether optimizer choices can be learned during training.
-We start from Muon and Newton--Muon, then learn two kinds of optimizer behavior:
+This repository contains the code used for our optimizer meta-learning report.
+The goal is to test whether optimizer choices can be learned during training:
 
-- temporal dynamics: learning-rate and momentum schedules;
+- temporal dynamics: learning rate and momentum;
 - geometry: how much preconditioning or curvature information should change the update direction.
 
-The paper figures are generated from the experiment logs stored in `izar_fetch/`.
-The training jobs were run on the EPFL Izar cluster. Re-running all training from
-scratch is possible with the Slurm launchers, but the submission can be
-reproduced locally from the fetched logs.
+The repository is intentionally small. It keeps only the training code, the
+plotting code, and the compact CSV files needed to regenerate the paper figures.
 
-## Reproduce the paper artifacts
+## Reproduce the figures
 
-Install the Python dependencies:
+Install the dependencies:
 
 ```bash
 pip install -r requirements.txt
 ```
 
-Regenerate the figures and result tables:
+Generate every figure:
 
 ```bash
 python run.py
 ```
 
-The command writes:
-
-```text
-figures/paper_like/figure1_cifar_wikitext_baselines.pdf
-figures/paper_like/figure2_gduo_scopes.pdf
-figures/paper_like/figure3_geometry_variants.pdf
-figures/paper_like/figure4_muon_layerwise_lr_momentum.pdf
-tables/table_cifar_baselines.csv
-tables/table_cifar_baselines.tex
-tables/table_wikitext_baselines.csv
-tables/table_wikitext_baselines.tex
-tables/table_gduo_scopes.csv
-tables/table_gduo_scopes.tex
-tables/table_geometry.csv
-tables/table_geometry.tex
-```
-
-To regenerate only the figures:
-
-```bash
-python run.py --skip-tables
-```
-
-To regenerate only the tables:
-
-```bash
-python run.py --skip-plots
-```
-
-## Main files
-
-```text
-run.py
-    Rebuilds all paper figures and tables from fetched logs.
-
-generate_plots.py
-    Rebuilds all paper figures only.
-
-utils/plot_utils.py
-    Shared plotting, log parsing, and figure generation utilities.
-
-train_cifar_fig1.py
-    CIFAR-10 training script used for the fixed AdamW, Muon, and Newton--Muon
-    reproduction.
-
-external/llm-baselines/
-    GPT/WikiText training code and optimizer implementations.
-
-slurm/*.slurm
-    Izar launchers used to run the cluster experiments.
-```
-
-## Plotting
-
-All figure logic is centralized in `utils/plot_utils.py`. The simplest plotting
-entry point is:
+or equivalently:
 
 ```bash
 python generate_plots.py
 ```
 
-To regenerate only selected figures:
+Generate only selected figures:
 
 ```bash
 python generate_plots.py --plots baselines
 python generate_plots.py --plots gduo geometry layerwise
 ```
 
-## Data layout
+The generated files are written to `figures/paper_like/`:
 
 ```text
-izar_fetch/results_cifar_fig1/
-    CIFAR-10 CSV logs.
-
-izar_fetch/llm_newton_stability/diagnostic/
-    GPT WikiText baseline curves.
-
-izar_fetch/current_meta_logs/
-    Main GD-UO learning-rate and momentum runs.
-
-izar_fetch/recent_gating_precond/
-    Learned geometry and preconditioner runs.
-
-izar_fetch/layerwise_3005859/results/
-    Final learned layerwise Muon hyperparameters.
+figure1_cifar_wikitext_baselines.pdf
+figure2_gduo_scopes.pdf
+figure3_geometry_variants.pdf
+figure4_muon_layerwise_lr_momentum.pdf
 ```
 
-## Methods
-
-`AdamW`, `Muon`, and `Newton--Muon` are fixed optimizer baselines. `GD-UO`
-variants learn optimizer hyperparameters online by differentiating through the
-training step. For temporal learning, we learn learning-rate and momentum either
-globally or per matrix. For geometry learning, Muon remains the backbone and a
-learned bucket-wise gate controls how strongly a preconditioned gradient is
-injected before Muon's projection.
-
-## Cluster runs
-
-The Slurm files reproduce the raw training jobs on Izar. The most relevant ones
-for the paper are:
+## Repository layout
 
 ```text
-slurm/run_cifar_fig1_izar.slurm
-slurm/run_llm_newton_stability_izar.slurm
-slurm/run_wikitext_51m_layerwise_izar.slurm
-slurm/run_wikitext_51m_gduo_missing_izar.slurm
-slurm/run_wikitext_51m_gating_izar.slurm
-slurm/run_wikitext_51m_precond_gate_izar.slurm
-```
+run.py
+    Minimal entry point for reproducing the plots.
 
-The local reproduction script does not submit cluster jobs.
+generate_plots.py
+    Selects which paper figures to regenerate.
 
-## Training code organization
+utils/plot_utils.py
+    Shared plotting code. It reads the compact CSV files in data/plot_inputs/.
 
-For the report, the cleanest story is to keep two training entry points:
+data/plot_inputs/
+    Small processed CSV files used by the plots. These replace the raw cluster
+    logs and keep the repository lightweight.
 
-```text
 train_cifar_fig1.py
-    Small CIFAR-10 reproduction used for the fixed optimizer baselines.
+    CIFAR-10 training script for the fixed AdamW, Muon, and Newton--Muon
+    baselines, plus the CIFAR GD-UO variants.
 
-external/llm-baselines/src/main.py
-    GPT/WikiText training entry point used for the main paper experiments.
+models/
+    CIFAR residual MLP model used by train_cifar_fig1.py.
+
+optimizers/
+    CIFAR optimizer implementations used by train_cifar_fig1.py.
+
+external/llm-baselines/
+    GPT/WikiText training pipeline and optimizer implementations used for the
+    main language-model experiments.
+
+figures/paper_like/
+    Generated paper figures.
 ```
 
-The optimizer logic belongs in `external/llm-baselines/src/optim/` for GPT runs
-and in `optimizers/` for the small CIFAR reproduction. Slurm files should stay
-in `slurm/`; they are launch recipes, not training code. Fetched logs and
-generated figures are separated from source code in `izar_fetch/`, `figures/`,
-and `tables/`.
+## Training
+
+The paper uses two training pipelines.
+
+For the CIFAR-10 reproduction:
+
+```bash
+python train_cifar_fig1.py --optimizer adamw
+python train_cifar_fig1.py --optimizer muon
+python train_cifar_fig1.py --optimizer newton_muon
+```
+
+For GPT/WikiText, use the language-model training entry point:
+
+```bash
+cd external/llm-baselines
+python src/main.py ...
+```
+
+The exact large-scale runs were executed on a cluster, but the repository does
+not include cluster launchers or raw logs. The plots are reproduced from the
+processed CSV files in `data/plot_inputs/`.
+
+## What the folders mean
+
+`data/plot_inputs/` contains the numerical results used for the figures.
+`utils/` contains reusable plotting utilities.
+`models/` and `optimizers/` support the CIFAR experiments.
+`external/llm-baselines/` contains the GPT/WikiText experiment code.
+`figures/` contains generated outputs.
+
+No Slurm scripts, shell sync scripts, raw Izar logs, or table exports are needed
+for this minimal reproducibility package.
