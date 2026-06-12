@@ -21,12 +21,6 @@ pip install -r requirements.txt
 Generate every figure:
 
 ```bash
-python run.py
-```
-
-or equivalently:
-
-```bash
 python generate_plots.py
 ```
 
@@ -49,11 +43,13 @@ figure4_muon_layerwise_lr_momentum.pdf
 ## Repository layout
 
 ```text
-run.py
-    Minimal entry point for reproducing the plots.
-
 generate_plots.py
     Selects which paper figures to regenerate.
+
+train.py
+    Training/replay entry point. It can replay the processed CIFAR and
+    GPT/WikiText results used in the paper, and it can launch GPT/WikiText
+    training through external/llm-baselines.
 
 utils/plot_utils.py
     Shared plotting code. It reads the compact CSV files in data/plot_inputs/.
@@ -72,7 +68,31 @@ figures/paper_like/
 
 ## Training
 
-The main training code kept in this repository is the GPT/WikiText pipeline:
+The minimal submission does not include raw cluster logs or the old CIFAR
+training code. Instead, `train.py` provides a reproducible replay of the
+processed results used in the figures:
+
+```bash
+python train.py --task cifar
+python train.py --task gpt
+```
+
+For GPT/WikiText, the same script can launch the real language-model training
+pipeline:
+
+```bash
+python train.py --task gpt --optimizer muon --execute
+python train.py --task gpt --optimizer adagrad-ema --execute
+```
+
+This calls `external/llm-baselines/src/main.py` with the WikiText setup. Extra
+training parameters can be changed from `train.py` flags, for example:
+
+```bash
+python train.py --task gpt --optimizer muon --execute --iterations 2000 --device cuda
+```
+
+The underlying GPT/WikiText entry point can also be called directly:
 
 ```bash
 cd external/llm-baselines
