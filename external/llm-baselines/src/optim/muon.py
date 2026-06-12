@@ -13,6 +13,7 @@ from typing import Dict, Tuple
 import torch
 import torch.distributed as dist
 
+from .gduo_meta import GDUOMetaMixin
 from .schedule import cos_inf_schedule, wsd_schedule
 
 
@@ -442,7 +443,7 @@ class DistributedMuon(torch.optim.Optimizer):
                 p.data.add_(g, alpha=-lr / scale)
 
 
-class Muon(torch.optim.Optimizer):
+class Muon(GDUOMetaMixin, torch.optim.Optimizer):
     """
     Muon - MomentUm Orthogonalized by Newton-schulz
 
@@ -481,6 +482,16 @@ class Muon(torch.optim.Optimizer):
         adamw_betas=(0.95, 0.95),
         adamw_eps=1e-8,
         adamw_wd=0,
+        gduo_learn_lr=False,
+        gduo_learn_momentum=False,
+        gduo_ema_beta=0.9,
+        gduo_lr_hyper_lr=1e-3,
+        gduo_momentum_hyper_lr=1e-3,
+        gduo_hypergrad_clip=1.0,
+        gduo_lr_min_ratio=0.25,
+        gduo_lr_max_ratio=4.0,
+        gduo_log_interval=0,
+        gduo_scope="tensor",
     ):
         defaults = dict(
             lr=lr,
@@ -518,55 +529,123 @@ class Muon(torch.optim.Optimizer):
             self.world_size = 1
             self.rank = 0
 
+        self._init_gduo_meta(
+            learn_lr=gduo_learn_lr,
+            learn_momentum=gduo_learn_momentum,
+            lr_hyper_lr=gduo_lr_hyper_lr,
+            momentum_hyper_lr=gduo_momentum_hyper_lr,
+            hypergrad_clip=gduo_hypergrad_clip,
+            lr_min_ratio=gduo_lr_min_ratio,
+            lr_max_ratio=gduo_lr_max_ratio,
+            ema_beta=gduo_ema_beta,
+            log_interval=gduo_log_interval,
+            scope=gduo_scope,
+        )
+
+    def get_metrics(self) -> dict:
+        group = self.param_groups[0]
+        params_with_lr = [p for p in group["params"] if self._gduo_has_meta(p)]
+        if not params_with_lr:
+            return {}
+            
+        avg_lr_scale = sum(self._gduo_lr_scale(p) for p in params_with_lr) / len(params_with_lr)
+        avg_actual_lr = sum(self._gduo_actual_lr(p, group) for p in params_with_lr) / len(params_with_lr)
+        
+        metrics = {
+            "gduo_lr_scale_avg": avg_lr_scale,
+            "gduo_actual_lr_avg": avg_actual_lr,
+        }
+        if self.gduo_learn_momentum:
+            avg_momentum = sum(self._gduo_momentum(p) for p in params_with_lr) / len(params_with_lr)
+            metrics["gduo_momentum_avg"] = avg_momentum
+        return metrics
+
+
     def step(self):
+        self.gduo_step += 1
         for group in self.param_groups:
             ############################
             #           Muon           #
             ############################
 
             params = [p for p in group["params"] if self.state[p]["use_muon"]]
-            lr = group["lr"]
-            momentum = group["momentum"]
+            self._gduo_update_from_previous(params, group)
 
             # generate weight updates in distributed fashion
             total_params = sum(p.numel() for p in params)
+            device = params[0].device if params else group["params"][0].device
             updates_flat = torch.zeros(
-                total_params, device="cuda", dtype=torch.bfloat16
+                total_params, device=device, dtype=torch.float32
+            )
+            derivs_flat = (
+                torch.zeros(total_params, device=device, dtype=torch.float32)
+                if self.gduo_learn_momentum
+                else None
             )
             curr_idx = 0
             for i, p in enumerate(params):
                 # luckily this will perfectly distribute a transformer with multiple of 4 layers to 8 GPUs
                 if i % self.world_size == self.rank:
+                    momentum = self._gduo_momentum(p)
+                    
                     g = p.grad
+                    assert g is not None
                     if g.ndim > 2:
                         g = g.view(g.size(0), -1)
-                    assert g is not None
                     state = self.state[p]
                     if "momentum_buffer" not in state:
                         state["momentum_buffer"] = torch.zeros_like(g)
                     buf = state["momentum_buffer"]
+                    old_buf = buf.clone() if self.gduo_learn_momentum else None
                     buf.mul_(momentum).add_(g)
                     if group["nesterov"]:
                         g = g.add(buf, alpha=momentum)
                     g = zeropower_via_newtonschulz5(g, steps=group["ns_steps"])
                     g *= max(1, g.size(0) / g.size(1)) ** 0.5
                     updates_flat[curr_idx : curr_idx + p.numel()] = g.flatten()
+                    if self.gduo_learn_momentum and old_buf is not None:
+                        eps = 1e-3
+                        dmu_draw = self._gduo_dmu_draw(p)
+                        deriv = self._finite_diff_muon_direction(
+                            p.grad.view_as(g) if p.grad.ndim == 2 else p.grad.view(g.size(0), -1),
+                            old_buf,
+                            momentum,
+                            group["nesterov"],
+                            group["ns_steps"],
+                            eps,
+                        )
+                        deriv.mul_(dmu_draw)
+                        derivs_flat[curr_idx : curr_idx + p.numel()] = deriv.flatten()
                 curr_idx += p.numel()
 
             # sync updates across devices. we are not memory-constrained so can do this simple deserialization
             if self.world_size > 1:
                 dist.all_reduce(updates_flat, op=dist.ReduceOp.SUM)
+                if derivs_flat is not None:
+                    dist.all_reduce(derivs_flat, op=dist.ReduceOp.SUM)
 
             # deserialize and apply updates
             curr_idx = 0
             for p in params:
+                g_meta = updates_flat[curr_idx : curr_idx + p.numel()].view_as(p.data)
                 g = (
                     updates_flat[curr_idx : curr_idx + p.numel()]
                     .view_as(p.data)
                     .type_as(p.data)
                 )
-                p.data.add_(g, alpha=-lr)
+                
+                p_lr = self._gduo_actual_lr(p, group)
+                p.data.add_(g, alpha=-p_lr)
+                
+                mu_deriv = None
+                if derivs_flat is not None:
+                    mu_deriv = derivs_flat[curr_idx : curr_idx + p.numel()].view_as(p.data)
+                self._gduo_store_previous(p, g_meta, mu_deriv)
+                self.state[p]["gduo_prev_actual_lr"] = p_lr
+                
                 curr_idx += p.numel()
+                
+            self._gduo_log(group, prefix="GDUO-Muon")
 
             ############################
             #       AdamW backup       #
@@ -602,6 +681,17 @@ class Muon(torch.optim.Optimizer):
                 scale = bias_correction1 / bias_correction2**0.5
                 p.data.mul_(1 - lr * weight_decay)
                 p.data.add_(g, alpha=-lr / scale)
+
+    def _finite_diff_muon_direction(self, grad, old_buf, momentum, nesterov, ns_steps, eps):
+        def direction(mu):
+            buf = old_buf * mu + grad
+            d = grad + buf * mu if nesterov else buf
+            d = zeropower_via_newtonschulz5(d, steps=ns_steps)
+            return d * max(1, d.size(0) / d.size(1)) ** 0.5
+
+        plus = direction(momentum + eps)
+        minus = direction(momentum - eps)
+        return (plus - minus) / (2.0 * eps)
 
 
 def separate_params(param_groups):
@@ -698,27 +788,37 @@ class CombinedScheduler:
             ),
         }
 
-        for group in optimizer.param_groups:
-            lr_key = muon_lr_key if muon_lr_key in group else adamw_lr_key
-            if lr_key in group:
-                scheduler_cls = scheduler_map.get(cfg.scheduler, None)
-                if scheduler_cls:
-                    if cfg.scheduler in ["cos", "linear"]:
+        if not optimizer.param_groups:
+            return
+
+        # Build a single scheduler covering all param_groups
+        scheduler_cls = scheduler_map.get(cfg.scheduler, None)
+        if scheduler_cls:
+            if cfg.scheduler in ["cos", "linear"]:
+                max_lrs = []
+                for group in optimizer.param_groups:
+                    lr_key = muon_lr_key if muon_lr_key in group else adamw_lr_key
+                    max_lrs.append(group.get(lr_key, cfg.lr))
+                scheduler = scheduler_cls(
+                    optimizer,
+                    max_lr=max_lrs,
+                    total_steps=cfg.iterations,
+                    pct_start=cfg.warmup_steps / cfg.iterations,
+                    anneal_strategy=cfg.scheduler,
+                    cycle_momentum=False,
+                    div_factor=1e2,
+                    final_div_factor=1,
+                )
+                self.schedulers.append(scheduler)
+            else:
+                # For wsd / cos_inf: one LambdaLR per param_group
+                for group in optimizer.param_groups:
+                    lr_key = muon_lr_key if muon_lr_key in group else adamw_lr_key
+                    if lr_key in group:
                         scheduler = scheduler_cls(
-                            optimizer,
-                            max_lr=[group.get(lr_key, getattr(cfg, lr_key.lower()))],
-                            total_steps=cfg.iterations,
-                            pct_start=cfg.warmup_steps / cfg.iterations,
-                            anneal_strategy=cfg.scheduler,
-                            cycle_momentum=False,
-                            div_factor=1e2,
-                            final_div_factor=1,
+                            optimizer, group.get(lr_key, cfg.lr)
                         )
-                    else:
-                        scheduler = scheduler_cls(
-                            optimizer, group.get(lr_key, getattr(cfg, lr_key.lower()))
-                        )
-                    self.schedulers.append(scheduler)
+                        self.schedulers.append(scheduler)
 
     def step(self):
         for scheduler in self.schedulers:

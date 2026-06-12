@@ -8,15 +8,15 @@ from tqdm import tqdm
 tknzr = tiktoken.get_encoding("gpt2")
 
 
-def get_fineweb_edu_data(datasets_dir, num_proc=40):
+def get_fineweb_edu_data(datasets_dir, num_proc=8):
     """To change the cache dir, run `export HF_HOME=/path/to/cache/` before running the code."""
-    FWEB_DATA_PATH = os.path.join(datasets_dir, "fineweb-edu-100BT/")
+    FWEB_DATA_PATH = os.path.join(datasets_dir, "fineweb-edu-10BT/")
     if not os.path.exists(os.path.join(FWEB_DATA_PATH, "train.bin")):
         os.makedirs(FWEB_DATA_PATH, exist_ok=True)
 
         dataset = load_dataset(
             "HuggingFaceFW/fineweb-edu",
-            name="sample-100BT",
+            name="sample-10BT",
             split="train",
             streaming=False,
             verification_mode="no_checks",

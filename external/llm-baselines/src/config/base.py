@@ -84,8 +84,10 @@ def parse_args(base_parser, args, namespace):
         default="adamw",
         choices=[
             "adamw",
+            "adamw-gduo",
             "sgd",
             "muon",
+            "muon-gduo",
             "soap",
             "ademamix",
             "lion",
@@ -103,6 +105,10 @@ def parse_args(base_parser, args, namespace):
             "scion-light",
             "d-muon",
             "newton-muon",
+            "newton-muon-gduo",
+            "adam-muon-gate",
+            "muon-newton-gate",
+            "muon-precond-gate",
             "muon-pytorch",  # works only with torch>=2.9
         ],
     )
@@ -135,6 +141,27 @@ def parse_args(base_parser, args, namespace):
     parser.add_argument("--newton_muon_block_size", default=0, type=int)
     parser.add_argument("--newton_muon_precond_clip", default=0.0, type=float)
     parser.add_argument("--newton_muon_precond_log_interval", default=0, type=int)
+    parser.add_argument("--newton_muon_learn_precond_strength", action="store_true")
+    parser.add_argument("--newton_muon_precond_strength_init", default=1.0, type=float)
+    parser.add_argument("--newton_muon_precond_strength_min", default=0.0, type=float)
+    parser.add_argument("--newton_muon_precond_strength_max", default=1.0, type=float)
+    parser.add_argument("--newton_muon_precond_strength_hyper_lr", default=1e-3, type=float)
+    parser.add_argument("--newton_muon_precond_strength_hypergrad_clip", default=1.0, type=float)
+    parser.add_argument("--newton_muon_precond_strength_fd_eps", default=1e-3, type=float)
+    parser.add_argument("--muon_precond_kind", default="adagrad_ema", choices=["adagrad_ema", "soap_lite"])
+    parser.add_argument("--muon_precond_beta", default=0.95, type=float)
+    parser.add_argument("--muon_precond_eps", default=1e-8, type=float)
+    parser.add_argument("--gduo_learn_lr", action="store_true")
+    parser.add_argument("--gduo_learn_momentum", action="store_true")
+    parser.add_argument("--gduo_lr_hyper_lr", default=1e-3, type=float)
+    parser.add_argument("--gduo_ema_beta", default=0.9, type=float)
+    parser.add_argument("--gduo_momentum_hyper_lr", default=1e-3, type=float)
+    parser.add_argument("--gduo_hypergrad_clip", default=1.0, type=float)
+    parser.add_argument("--gduo_scope", default="tensor", choices=["tensor", "global"])
+    parser.add_argument("--gduo_gate_init", default=0.5, type=float)
+    parser.add_argument("--gduo_lr_min_ratio", default=0.25, type=float)
+    parser.add_argument("--gduo_lr_max_ratio", default=4.0, type=float)
+    parser.add_argument("--gduo_log_interval", default=200, type=int)
     parser.add_argument("--adema_beta3", default=0.9, type=float)
     parser.add_argument("--adema_alpha", default=2.0, type=float)
     parser.add_argument("--adema_beta3_warmup", default=None, type=int)

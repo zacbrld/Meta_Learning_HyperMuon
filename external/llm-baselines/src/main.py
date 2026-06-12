@@ -34,6 +34,10 @@ from optim.scion import Scion, ScionLight, scion_partitions
 from optim.sign import Signum
 from optim.soap import SOAP
 from optim.sophia import SophiaG
+from optim.adamw_gduo import AdamWGDUO
+from optim.gating import AdamMuonGate
+from optim.muon_newton_gate import MuonNewtonGate
+from optim.muon_precond_gate import MuonPrecondGate
 
 
 def get_args():
@@ -162,7 +166,24 @@ def main(args, parser):
             data_format=args.soap_data_format,
             correct_bias=args.correct_bias,
         )
-    elif args.opt == "muon":
+    elif args.opt == "adamw-gduo":
+        opt = AdamWGDUO(
+            group_specs,
+            lr=args.lr,
+            betas=(args.beta1, args.beta2),
+            weight_decay=args.weight_decay,
+            gduo_learn_lr=args.gduo_learn_lr,
+            gduo_learn_momentum=args.gduo_learn_momentum,
+            gduo_ema_beta=args.gduo_ema_beta,
+            gduo_lr_hyper_lr=args.gduo_lr_hyper_lr,
+            gduo_momentum_hyper_lr=args.gduo_momentum_hyper_lr,
+            gduo_hypergrad_clip=args.gduo_hypergrad_clip,
+            gduo_lr_min_ratio=args.gduo_lr_min_ratio,
+            gduo_lr_max_ratio=args.gduo_lr_max_ratio,
+            gduo_log_interval=args.gduo_log_interval,
+            gduo_scope=args.gduo_scope,
+        )
+    elif args.opt in {"muon", "muon-gduo"}:
         param_list = (
             list(model.parameters())
             if args.distributed_backend is None
@@ -179,8 +200,18 @@ def main(args, parser):
             adamw_betas=(args.beta1, args.beta2),
             adamw_eps=1e-8,
             adamw_wd=args.weight_decay,
+            gduo_learn_lr=args.gduo_learn_lr,
+            gduo_learn_momentum=args.gduo_learn_momentum,
+            gduo_ema_beta=args.gduo_ema_beta,
+            gduo_lr_hyper_lr=args.gduo_lr_hyper_lr,
+            gduo_momentum_hyper_lr=args.gduo_momentum_hyper_lr,
+            gduo_hypergrad_clip=args.gduo_hypergrad_clip,
+            gduo_lr_min_ratio=args.gduo_lr_min_ratio,
+            gduo_lr_max_ratio=args.gduo_lr_max_ratio,
+            gduo_log_interval=args.gduo_log_interval,
+            gduo_scope=args.gduo_scope,
         )
-    elif args.opt == "newton-muon":
+    elif args.opt in {"newton-muon", "newton-muon-gduo"}:
         raw_model = distributed_backend.get_raw_model(model)
         param_list = (
             list(model.parameters())
@@ -207,6 +238,123 @@ def main(args, parser):
             block_size=args.newton_muon_block_size,
             precond_clip=args.newton_muon_precond_clip,
             precond_log_interval=args.newton_muon_precond_log_interval,
+            learn_precond_strength=args.newton_muon_learn_precond_strength,
+            precond_strength_init=args.newton_muon_precond_strength_init,
+            precond_strength_min=args.newton_muon_precond_strength_min,
+            precond_strength_max=args.newton_muon_precond_strength_max,
+            precond_strength_hyper_lr=args.newton_muon_precond_strength_hyper_lr,
+            precond_strength_hypergrad_clip=args.newton_muon_precond_strength_hypergrad_clip,
+            precond_strength_fd_eps=args.newton_muon_precond_strength_fd_eps,
+            gduo_learn_lr=args.gduo_learn_lr,
+            gduo_learn_momentum=args.gduo_learn_momentum,
+            gduo_ema_beta=args.gduo_ema_beta,
+            gduo_lr_hyper_lr=args.gduo_lr_hyper_lr,
+            gduo_momentum_hyper_lr=args.gduo_momentum_hyper_lr,
+            gduo_hypergrad_clip=args.gduo_hypergrad_clip,
+            gduo_lr_min_ratio=args.gduo_lr_min_ratio,
+            gduo_lr_max_ratio=args.gduo_lr_max_ratio,
+            gduo_log_interval=args.gduo_log_interval,
+            gduo_scope=args.gduo_scope,
+        )
+    elif args.opt == "adam-muon-gate":
+        param_list = (
+            list(model.parameters())
+            if args.distributed_backend is None
+            else list(model.module.parameters())
+        )
+        opt = AdamMuonGate(
+            muon_params=param_list,
+            adamw_params=None,
+            lr=args.muon_lr_factor,
+            betas=(args.beta1, args.beta2),
+            eps=1e-8,
+            weight_decay=args.weight_decay,
+            momentum=args.momentum,
+            nesterov=args.nesterov,
+            ns_steps=args.muon_ns_steps,
+            adamw_lr=args.lr,
+            adamw_betas=(args.beta1, args.beta2),
+            adamw_eps=1e-8,
+            adamw_wd=args.weight_decay,
+            gate_hyper_lr=args.gduo_lr_hyper_lr,
+            gate_hypergrad_clip=args.gduo_hypergrad_clip,
+            gate_init=args.gduo_gate_init,
+            log_interval=args.gduo_log_interval,
+        )
+    elif args.opt == "muon-newton-gate":
+        raw_model = distributed_backend.get_raw_model(model) if distributed_backend else model
+        param_list = (
+            list(model.parameters())
+            if args.distributed_backend is None
+            else list(model.module.parameters())
+        )
+        opt = MuonNewtonGate(
+            muon_params=param_list,
+            model=raw_model,
+            adamw_params=None,
+            lr=args.newton_muon_lr_factor,
+            weight_decay=args.weight_decay,
+            momentum=args.momentum,
+            nesterov=args.nesterov,
+            ns_steps=args.muon_ns_steps,
+            adamw_lr=args.lr,
+            adamw_betas=(args.beta1, args.beta2),
+            adamw_eps=1e-8,
+            adamw_wd=args.weight_decay,
+            ewma_beta=args.newton_muon_ewma_beta,
+            ridge=args.newton_muon_ridge,
+            refresh_interval=args.newton_muon_refresh_interval,
+            second_moment_init=args.newton_muon_second_moment_init,
+            max_precond_dim=args.newton_muon_max_precond_dim,
+            block_size=args.newton_muon_block_size,
+            precond_clip=args.newton_muon_precond_clip,
+            precond_strength_init=args.newton_muon_precond_strength_init,
+            precond_strength_min=args.newton_muon_precond_strength_min,
+            precond_strength_max=args.newton_muon_precond_strength_max,
+            precond_strength_hyper_lr=args.newton_muon_precond_strength_hyper_lr,
+            precond_strength_hypergrad_clip=args.newton_muon_precond_strength_hypergrad_clip,
+            gate_hyper_lr=args.gduo_lr_hyper_lr,
+            gate_hypergrad_clip=args.gduo_hypergrad_clip,
+            gate_init=args.gduo_gate_init,
+            gduo_learn_lr=args.gduo_learn_lr,
+            gduo_learn_momentum=args.gduo_learn_momentum,
+            gduo_ema_beta=args.gduo_ema_beta,
+            gduo_lr_hyper_lr=args.gduo_lr_hyper_lr,
+            gduo_momentum_hyper_lr=args.gduo_momentum_hyper_lr,
+            gduo_hypergrad_clip=args.gduo_hypergrad_clip,
+            gduo_lr_min_ratio=args.gduo_lr_min_ratio,
+            gduo_lr_max_ratio=args.gduo_lr_max_ratio,
+            gduo_scope=args.gduo_scope,
+            log_interval=args.gduo_log_interval,
+        )
+    elif args.opt == "muon-precond-gate":
+        param_list = (
+            list(model.parameters())
+            if args.distributed_backend is None
+            else list(model.module.parameters())
+        )
+        opt = MuonPrecondGate(
+            muon_params=param_list,
+            adamw_params=None,
+            lr=args.muon_lr_factor,
+            weight_decay=args.weight_decay,
+            momentum=args.momentum,
+            nesterov=args.nesterov,
+            ns_steps=args.muon_ns_steps,
+            adamw_lr=args.lr,
+            adamw_betas=(args.beta1, args.beta2),
+            adamw_eps=1e-8,
+            adamw_wd=args.weight_decay,
+            precond_kind=args.muon_precond_kind,
+            precond_beta=args.muon_precond_beta,
+            precond_eps=args.muon_precond_eps,
+            precond_strength_init=args.newton_muon_precond_strength_init,
+            precond_strength_min=args.newton_muon_precond_strength_min,
+            precond_strength_max=args.newton_muon_precond_strength_max,
+            precond_strength_hyper_lr=args.newton_muon_precond_strength_hyper_lr,
+            precond_strength_hypergrad_clip=args.newton_muon_precond_strength_hypergrad_clip,
+            max_precond_dim=args.newton_muon_max_precond_dim,
+            log_interval=args.gduo_log_interval,
         )
     elif args.opt == "d-muon":
         opt = DistributedMuon(
@@ -406,7 +554,7 @@ def main(args, parser):
                     div_factor=1e2,
                     final_div_factor=args.final_div_factor,
                 )
-                    if args.opt not in {"muon", "newton-muon"}
+                    if args.opt not in {"muon", "newton-muon", "muon-gduo", "newton-muon-gduo", "adamw-gduo", "adam-muon-gate", "muon-newton-gate", "muon-precond-gate"}
                     else CombinedScheduler(opt, args)
                 )
         elif args.scheduler == "cos_inf":
@@ -419,7 +567,7 @@ def main(args, parser):
             )
             scheduler = (
                 torch.optim.lr_scheduler.LambdaLR(opt, lambda_schedule)
-                if args.opt not in {"muon", "newton-muon"}
+                if args.opt not in {"muon", "newton-muon", "muon-gduo", "newton-muon-gduo", "adamw-gduo", "adam-muon-gate", "muon-newton-gate", "muon-precond-gate"}
                 else CombinedScheduler(opt, args)
             )
         elif args.scheduler == "wsd":
@@ -433,7 +581,7 @@ def main(args, parser):
             )
             scheduler = (
                 torch.optim.lr_scheduler.LambdaLR(opt, lambda_schedule)
-                if args.opt not in {"muon", "newton-muon"}
+                if args.opt not in {"muon", "newton-muon", "muon-gduo", "newton-muon-gduo", "adamw-gduo", "adam-muon-gate", "muon-newton-gate", "muon-precond-gate"}
                 else CombinedScheduler(opt, args)
             )
         else:

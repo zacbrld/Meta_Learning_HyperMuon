@@ -112,6 +112,8 @@ def train(
     stats = {"train_loss": [], "val_loss": [], "val_pp": [], "val_acc": []}
     grad_norms = []
     model.train()
+    log_train_time = 0.0
+    log_train_steps = 0
 
     while curr_iter <= cfg.iterations:
         # Save permanent checkpoint
@@ -246,6 +248,8 @@ def train(
             ewa.step(not_compiled_model, distributed_backend.is_master_process())
 
         dt = (time.perf_counter_ns() - t_start) / 1e9
+        log_train_time += dt
+        log_train_steps += 1
 
         curr_iter += 1
 
@@ -260,6 +264,15 @@ def train(
             }
 
             current_lrs = [param_group["lr"] for param_group in opt.param_groups]
+            iter_dt_avg = log_train_time / max(1, log_train_steps)
+            steps_per_sec = log_train_steps / max(log_train_time, 1e-12)
+            tokens_per_step = (
+                distributed_backend.get_world_size()
+                * cfg.acc_steps
+                * cfg.batch_size
+                * cfg.sequence_length
+            )
+            tokens_per_sec = tokens_per_step * steps_per_sec
 
             if cfg.opt == "prodigy":
                 prodigy_efective_lrs = log_prodigy_lr(opt)
@@ -267,6 +280,9 @@ def train(
             print(
                 f"Train: Iter={curr_iter} ({epoch:0.3f} epochs) "
                 f"train_loss={train_loss:.3f} iter_dt={dt:.2e}s "
+                f"iter_dt_avg={iter_dt_avg:.2e}s "
+                f"steps_per_sec={steps_per_sec:.3f} "
+                f"tokens_per_sec={tokens_per_sec:.0f} "
                 f"lr={current_lrs[0]:.2e}"
             )
             if cfg.opt == "prodigy":
@@ -280,6 +296,9 @@ def train(
                     "train/perplexity": 2.71828**train_loss,
                     "lr": current_lrs[0],
                     "iter_dt": dt,
+                    "iter_dt_avg": iter_dt_avg,
+                    "steps_per_sec": steps_per_sec,
+                    "tokens_per_sec": tokens_per_sec,
                     "max_grad_norm": max(grad_norms).item() if grad_norms else 0,
                     "mean_grad_norm": (
                         torch.tensor(grad_norms).mean().item() if grad_norms else 0
@@ -298,6 +317,8 @@ def train(
                 wandb.log(wandb_logs)
 
             grad_norms = []
+            log_train_time = 0.0
+            log_train_steps = 0
 
     return stats
 
