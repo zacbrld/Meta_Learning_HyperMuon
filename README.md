@@ -63,6 +63,9 @@ figure4_muon_layerwise_lr_momentum.pdf
 The repository is intentionally minimal. We do not include raw cluster logs,
 Slurm launchers, or old scratch scripts. The paper figures are reproduced from
 processed CSV files, while the GPT/WikiText training backend is kept runnable.
+For the language-model experiments, we used and adapted
+[epfml/llm-baselines](https://github.com/epfml/llm-baselines) as the GPT
+training codebase.
 
 Replay processed results:
 
@@ -110,7 +113,7 @@ utils/plot_utils.py
     Shared plotting code.
 
 external/llm-baselines/
-    GPT/WikiText training code and optimizer implementations.
+    GPT/WikiText training code adapted from epfml/llm-baselines.
 
 figures/paper_like/
     Generated figures.
