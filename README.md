@@ -43,8 +43,9 @@ python generate_plots.py
 Replay the processed training results:
 
 ```bash
-python train.py --task cifar
-python train.py --task gpt
+python train_baselines.py
+python train_speed_parameters.py
+python train_gated.py
 ```
 
 ## Figures
@@ -80,21 +81,36 @@ training codebase.
 Replay processed results:
 
 ```bash
-python train.py --task cifar
-python train.py --task gpt
+python train_baselines.py
+python train_speed_parameters.py
+python train_gated.py
 ```
 
-Launch a real GPT/WikiText run:
+The three scripts separate the experiment families:
+
+```text
+train_baselines.py
+    Fixed AdamW, Muon, and Newton--Muon baselines.
+
+train_speed_parameters.py
+    LR+momentum meta-learning, globally or layerwise.
+
+train_gated.py
+    Learned geometry: Adam/Muon, Muon/Newton, AdaGrad-EMA/Muon, SOAP-lite/Muon.
+```
+
+Launch real GPT/WikiText runs:
 
 ```bash
-python train.py --task gpt --optimizer muon --execute
-python train.py --task gpt --optimizer adagrad-ema --execute
+python train_baselines.py --task gpt --optimizer muon --execute
+python train_speed_parameters.py --optimizer muon --scope layerwise --execute
+python train_gated.py --variant adagrad-ema --execute
 ```
 
 Change training settings with flags:
 
 ```bash
-python train.py --task gpt --optimizer muon --execute --iterations 2000 --device cuda
+python train_gated.py --variant soap-lite --execute --iterations 2000 --device cuda
 ```
 
 The GPT entry point can also be called directly:
@@ -113,8 +129,17 @@ MetaMuon.pdf
 generate_plots.py
     Figure entry point.
 
+train_baselines.py
+    Fixed baseline launcher/replay.
+
+train_speed_parameters.py
+    LR+momentum meta-learning launcher/replay.
+
+train_gated.py
+    Learned geometry launcher/replay.
+
 train.py
-    Result replay and GPT/WikiText training launcher.
+    Generic training/replay wrapper kept for convenience.
 
 data/plot_inputs/
     Processed numerical results used by the plots.
