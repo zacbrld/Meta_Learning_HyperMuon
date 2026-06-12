@@ -116,10 +116,16 @@ def gpt_command(args):
         opt,
         "--eval_interval",
         str(args.eval_interval),
+        "--eval_batches",
+        str(args.eval_batches),
         "--results_base_folder",
         str(args.output_dir),
         "--device",
         args.device,
+        "--multiple_of",
+        str(args.multiple_of),
+        "--dtype",
+        args.dtype,
     ]
     if args.optimizer in {"muon", "newton-muon", "adam-muon", "muon-newton", "adagrad-ema", "soap-lite"}:
         command += ["--muon_lr_factor", str(args.muon_lr_factor), "--momentum", str(args.momentum)]
@@ -145,14 +151,17 @@ def parse_args():
     parser.add_argument("--iterations", type=int, default=2000)
     parser.add_argument("--warmup_steps", type=int, default=100)
     parser.add_argument("--eval_interval", type=int, default=100)
+    parser.add_argument("--eval_batches", type=int, default=64)
     parser.add_argument("--batch_size", type=int, default=16)
     parser.add_argument("--sequence_length", type=int, default=512)
     parser.add_argument("--n_layer", type=int, default=8)
     parser.add_argument("--n_embd", type=int, default=512)
     parser.add_argument("--n_head", type=int, default=8)
+    parser.add_argument("--multiple_of", type=int, default=256)
     parser.add_argument("--muon_lr_factor", type=float, default=1.0)
     parser.add_argument("--momentum", type=float, default=0.9)
     parser.add_argument("--device", default="cuda")
+    parser.add_argument("--dtype", default="bfloat16")
     parser.add_argument("--output_dir", default="results_train")
     return parser.parse_args()
 
