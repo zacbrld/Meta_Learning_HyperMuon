@@ -2,6 +2,7 @@
 /data/*
 !/data/plot_inputs/
 !/data/plot_inputs/*.csv
+!/data/plot_inputs/README.md
 
 # Résultats et figures (générés par les runs)
 results/
