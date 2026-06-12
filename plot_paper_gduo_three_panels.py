@@ -125,7 +125,13 @@ def load_all(args) -> tuple[pd.DataFrame, pd.DataFrame]:
     frames.extend(
         [
             parse_eval_log(
-                Path("izar_fetch/current_meta_logs/gpt_layer_wiki_3005857_0.out"),
+                Path("izar_fetch/recent_gating_precond/gpt_gduo_missing_3028678_0.out"),
+                "adam",
+                "global",
+                "LR+momentum global",
+            ),
+            parse_eval_log(
+                Path("izar_fetch/recent_gating_precond/gpt_gduo_missing_3028678_1.out"),
                 "adam",
                 "layerwise",
                 "LR+momentum layerwise",
@@ -137,28 +143,26 @@ def load_all(args) -> tuple[pd.DataFrame, pd.DataFrame]:
                 "LR+momentum layerwise",
             ),
             parse_eval_log(
-                Path("izar_fetch/current_meta_logs/gpt_layer_wiki_3005857_2.out"),
-                "newton",
-                "layerwise",
-                "LR+momentum layerwise",
-            ),
-            parse_eval_log(
                 Path("izar_fetch/current_meta_logs/gpt_meta_follow_3005881_2.out"),
                 "muon",
                 "global",
                 "LR+momentum global",
             ),
             parse_eval_log(
-                Path("izar_fetch/logs/gpt_gduo_meta_2988587_5.out"),
+                Path("izar_fetch/recent_gating_precond/gpt_gduo_missing_3028678_2.out"),
                 "newton",
                 "global",
                 "LR+momentum global",
             ),
+            parse_eval_log(
+                Path("izar_fetch/recent_gating_precond/gpt_gduo_missing_3028678_3.out"),
+                "newton",
+                "layerwise",
+                "LR+momentum layerwise",
+            ),
         ]
     )
 
-    # No true AdamW global LR+momentum run is available. We keep the plotting data
-    # faithful and report this in the coverage table instead of adding a proxy.
     df = pd.concat([x for x in frames if not x.empty], ignore_index=True)
     df = df[df["iter"] <= 2000].copy()
 
@@ -188,7 +192,13 @@ def load_all(args) -> tuple[pd.DataFrame, pd.DataFrame]:
 
 
 def plot(df: pd.DataFrame, output: Path):
-    fig, axes = plt.subplots(1, 3, figsize=(7.2, 2.35), sharey=True)
+    fig = plt.figure(figsize=(6.3, 4.35))
+    gs = fig.add_gridspec(2, 4, height_ratios=[1.0, 1.0], hspace=0.38, wspace=0.36)
+    axes = [
+        fig.add_subplot(gs[0, 0:2]),
+        fig.add_subplot(gs[0, 2:4]),
+        fig.add_subplot(gs[1, 1:3]),
+    ]
     panels = [
         ("adam", r"$\mathrm{AdamW}$"),
         ("muon", r"$\mathrm{Muon}$"),
@@ -208,11 +218,11 @@ def plot(df: pd.DataFrame, output: Path):
                 continue
             sub = sub.sort_values("iter")
             ax.plot(sub["iter"], sub["val_loss"], color=COLORS[variant], linestyle=linestyle, label=label)
-        ax.text(0.03, 0.94, panel_label, transform=ax.transAxes, ha="left", va="top")
-        ax.set_xlabel(r"$\mathrm{Training\ step}$")
+        ax.text(0.97, 0.94, panel_label, transform=ax.transAxes, ha="right", va="top")
         format_axes(ax)
 
-    axes[0].set_ylabel(r"$\mathrm{Validation\ loss}$")
+    fig.supxlabel(r"$\mathrm{Training\ step}$", y=0.055)
+    fig.supylabel(r"$\mathrm{Validation\ loss}$", x=0.045)
     handles, labels = [], []
     for ax in axes:
         h, l = ax.get_legend_handles_labels()
@@ -228,9 +238,9 @@ def plot(df: pd.DataFrame, output: Path):
         frameon=False,
         handlelength=2.0,
         columnspacing=1.25,
-        bbox_to_anchor=(0.5, 1.04),
+        bbox_to_anchor=(0.5, 0.985),
     )
-    fig.subplots_adjust(left=0.075, right=0.995, bottom=0.20, top=0.82, wspace=0.12)
+    fig.subplots_adjust(left=0.11, right=0.99, bottom=0.125, top=0.91)
     output.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(output.with_suffix(".pdf"), bbox_inches="tight", pad_inches=0.015)
     fig.savefig(output.with_suffix(".png"), bbox_inches="tight", pad_inches=0.015)

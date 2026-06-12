@@ -22,11 +22,11 @@ def setup_style():
             "font.family": "serif",
             "font.serif": ["Computer Modern Roman", "CMU Serif", "DejaVu Serif"],
             "mathtext.fontset": "cm",
-            "font.size": 8.5,
-            "axes.labelsize": 8.8,
-            "legend.fontsize": 8.0,
-            "xtick.labelsize": 8.0,
-            "ytick.labelsize": 8.0,
+            "font.size": 7.6,
+            "axes.labelsize": 7.9,
+            "legend.fontsize": 7.0,
+            "xtick.labelsize": 7.1,
+            "ytick.labelsize": 7.1,
             "axes.linewidth": 0.65,
             "axes.spines.top": False,
             "axes.spines.right": False,
@@ -44,7 +44,7 @@ def setup_style():
             "grid.color": "#B8B8B8",
             "grid.alpha": 0.20,
             "grid.linewidth": 0.45,
-            "lines.linewidth": 1.05,
+            "lines.linewidth": 0.95,
             "lines.solid_capstyle": "round",
             "pdf.fonttype": 42,
             "ps.fonttype": 42,
@@ -97,7 +97,7 @@ def format_axes(ax):
 
 def plot(cifar_df: pd.DataFrame, gpt_df: pd.DataFrame, output: Path):
     newton_name = best_stable_newton(gpt_df)
-    fig, axes = plt.subplots(1, 2, figsize=(6.75, 2.45))
+    fig, axes = plt.subplots(2, 1, figsize=(3.35, 4.05))
 
     cifar_specs = [
         ("adamw", "AdamW", COLORS["adamw"]),
@@ -110,7 +110,6 @@ def plot(cifar_df: pd.DataFrame, gpt_df: pd.DataFrame, output: Path):
             continue
         axes[0].plot(sub["step"], 100.0 * sub["eval_accuracy"], label=label, color=color)
 
-    axes[0].set_xlabel(r"$\mathrm{Training\ step}$")
     axes[0].set_ylabel(r"$\mathrm{Test\ accuracy}\;(\%)$")
     axes[0].set_xlim(0, 1300)
     axes[0].set_ylim(20, 70)
@@ -128,11 +127,11 @@ def plot(cifar_df: pd.DataFrame, gpt_df: pd.DataFrame, output: Path):
         sub = sub[sub["iter"] > 0]
         axes[1].plot(sub["iter"], sub["val_loss"], label=label, color=color)
 
-    axes[1].set_xlabel(r"$\mathrm{Training\ step}$")
     axes[1].set_ylabel(r"$\mathrm{Validation\ loss}$")
     axes[1].set_xlim(0, 2000)
     axes[1].set_ylim(3.9, 6.3)
     format_axes(axes[1])
+    fig.supxlabel(r"$\mathrm{Training\ step}$", y=0.008)
 
     handles, labels = axes[0].get_legend_handles_labels()
     fig.legend(
@@ -141,12 +140,12 @@ def plot(cifar_df: pd.DataFrame, gpt_df: pd.DataFrame, output: Path):
         loc="upper center",
         ncol=3,
         frameon=False,
-        handlelength=2.2,
-        columnspacing=1.5,
-        bbox_to_anchor=(0.5, 1.03),
+        handlelength=1.8,
+        columnspacing=0.85,
+        bbox_to_anchor=(0.5, 1.025),
     )
 
-    fig.subplots_adjust(left=0.085, right=0.995, bottom=0.19, top=0.84, wspace=0.34)
+    fig.subplots_adjust(left=0.20, right=0.99, bottom=0.125, top=0.91, hspace=0.12)
     output.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(output.with_suffix(".pdf"), bbox_inches="tight", pad_inches=0.015)
     fig.savefig(output.with_suffix(".png"), bbox_inches="tight", pad_inches=0.015)

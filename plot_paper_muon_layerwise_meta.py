@@ -6,7 +6,6 @@ import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-from matplotlib.lines import Line2D
 from matplotlib.ticker import AutoMinorLocator, MaxNLocator
 import pandas as pd
 
@@ -48,9 +47,9 @@ def setup_style():
             "font.family": "serif",
             "font.serif": ["Computer Modern Roman", "CMU Serif", "DejaVu Serif"],
             "mathtext.fontset": "cm",
-            "font.size": 7.8,
-            "axes.labelsize": 8.2,
-            "legend.fontsize": 6.8,
+            "font.size": 7.6,
+            "axes.labelsize": 7.9,
+            "legend.fontsize": 6.4,
             "xtick.labelsize": 7.1,
             "ytick.labelsize": 7.1,
             "axes.linewidth": 0.65,
@@ -118,7 +117,7 @@ def style_axis(ax):
 
 
 def plot(final: pd.DataFrame, output: Path):
-    fig, axes = plt.subplots(1, 2, figsize=(7.15, 2.05))
+    fig, axes = plt.subplots(2, 1, figsize=(3.35, 4.05), sharex=True)
     ax_lr_final, ax_mu_final = axes
 
     handles = []
@@ -149,7 +148,6 @@ def plot(final: pd.DataFrame, output: Path):
 
     for ax in (ax_lr_final, ax_mu_final):
         ax.set_xlim(-0.9, 7.35)
-        ax.set_xlabel(r"$\mathrm{Transformer\ block}$")
         ax.set_xticks([0, 1, 2, 3, 4, 5, 6, 7])
         style_axis(ax)
 
@@ -160,33 +158,37 @@ def plot(final: pd.DataFrame, output: Path):
     ax_mu_final.axhline(0.95, color="#888888", linewidth=0.55, linestyle=":")
     ax_mu_final.set_ylabel(r"$\mathrm{Final\ momentum}$")
     ax_mu_final.set_ylim(0.94, 0.976)
+    fig.supxlabel(r"$\mathrm{Transformer\ block}$", y=0.008)
 
     pos_emb = final[final["component"] == "pos_emb"]
     if not pos_emb.empty:
         pos = pos_emb.iloc[0]
-        handles.append(
-            Line2D(
-                [0],
-                [0],
-                color=COLORS["pos_emb"],
-                marker=MARKERS["pos_emb"],
-                linestyle="none",
-                markersize=4.0,
-            )
+        fig.text(
+            0.745,
+            0.962,
+            f"pos-emb: {pos['lr_scale']:.2f}/{pos['momentum']:.2f}",
+            ha="center",
+            va="center",
+            fontsize=6.4,
+            bbox={
+                "boxstyle": "round,pad=0.22",
+                "facecolor": "white",
+                "edgecolor": "#8A8A8A",
+                "linewidth": 0.45,
+            },
         )
-        labels.append(f"pos-emb LR={pos['lr_scale']:.2f}, mom={pos['momentum']:.2f}")
 
     fig.legend(
         handles,
         labels,
         loc="upper center",
-        ncol=5,
+        ncol=2,
         frameon=False,
-        handlelength=1.5,
-        columnspacing=0.9,
-        bbox_to_anchor=(0.52, 1.05),
+        handlelength=1.4,
+        columnspacing=0.75,
+        bbox_to_anchor=(0.34, 1.01),
     )
-    fig.subplots_adjust(left=0.08, right=0.995, bottom=0.22, top=0.83, wspace=0.27)
+    fig.subplots_adjust(left=0.20, right=0.99, bottom=0.125, top=0.86, hspace=0.12)
     output.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(output.with_suffix(".pdf"), bbox_inches="tight", pad_inches=0.015)
     fig.savefig(output.with_suffix(".png"), bbox_inches="tight", pad_inches=0.015)
