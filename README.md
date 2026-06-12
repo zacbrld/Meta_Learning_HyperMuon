@@ -2,9 +2,10 @@
 
 This is the reproducibility package for our optimizer meta-learning project.
 
-The project asks a simple question: can an optimizer learn some of its own
-design choices while the model is training? Instead of fixing every coefficient
-by grid search, we learn them online with hypergradients.
+Modern optimizers contain many hand-fixed choices: learning rates, momentum,
+normalization constants, and preconditioning strengths. These choices are
+usually tuned offline by grid search, then frozen for the whole training run.
+Our project asks whether some of them can be learned directly during training.
 
 We study two parts of the optimizer:
 
@@ -12,9 +13,18 @@ We study two parts of the optimizer:
 - **geometry**: how much curvature or preconditioning should change the update
   direction before Muon's matrix projection.
 
-The experiments compare AdamW, Muon, Newton--Muon, learned LR/momentum variants,
-and softer geometry learners such as Adam/Muon, AdaGrad-EMA/Muon, and
-SOAP-lite/Muon. The report itself is in `MetaMuon.pdf`.
+We compare fixed optimizers against meta-learned variants on CIFAR-10 and
+GPT/WikiText. For the language-model experiments, we test global meta-learning
+and layerwise meta-learning for AdamW, Muon, and Newton--Muon. The strongest
+time-dynamics result is Muon with layerwise learned learning rate and momentum:
+on GPT/WikiText, it improves the fixed Muon validation loss from **4.096** to
+**3.477** after 2000 iterations. We then test learned geometry corrections on
+top of Muon. The best soft preconditioner in our sweep, AdaGrad-EMA/Muon,
+reaches **3.402** validation loss and **0.4005** validation accuracy.
+
+In short: layerwise meta-learning makes Muon substantially stronger, and soft
+learned geometry works better than injecting a hard Newton correction everywhere.
+The report itself is in `MetaMuon.pdf`.
 
 ## Quick Start
 
@@ -118,6 +128,3 @@ external/llm-baselines/
 figures/paper_like/
     Generated figures.
 ```
-
-This keeps the submission small, readable, and focused on reproducing the
-results used in the report.
