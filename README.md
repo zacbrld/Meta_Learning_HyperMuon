@@ -1,16 +1,22 @@
 # Meta-Learning HyperMuon
 
-This repository contains the code used for our optimizer meta-learning report.
-The goal is to test whether optimizer choices can be learned during training:
+This is the reproducibility package for our optimizer meta-learning project.
 
-- temporal dynamics: learning rate and momentum;
-- geometry: how much preconditioning or curvature information should change the update direction.
+The project asks a simple question: can an optimizer learn some of its own
+design choices while the model is training? Instead of fixing every coefficient
+by grid search, we learn them online with hypergradients.
 
-The repository is intentionally small. It keeps the plotting pipeline, the
-compact CSV files needed to regenerate the paper figures, and the GPT/WikiText
-training code used for the main experiments.
+We study two parts of the optimizer:
 
-## Reproduce the figures
+- **time dynamics**: the learning rate and momentum, globally and per layer;
+- **geometry**: how much curvature or preconditioning should change the update
+  direction before Muon's matrix projection.
+
+The experiments compare AdamW, Muon, Newton--Muon, learned LR/momentum variants,
+and softer geometry learners such as Adam/Muon, AdaGrad-EMA/Muon, and
+SOAP-lite/Muon. The report itself is in `MetaMuon.pdf`.
+
+## Quick Start
 
 Install the dependencies:
 
@@ -18,20 +24,32 @@ Install the dependencies:
 pip install -r requirements.txt
 ```
 
-Generate every figure:
+Regenerate every figure used in the report:
 
 ```bash
 python generate_plots.py
 ```
 
-Generate only selected figures:
+Replay the processed training results:
+
+```bash
+python train.py --task cifar
+python train.py --task gpt
+```
+
+## Figures
+
+`generate_plots.py` reads the compact CSV files in `data/plot_inputs/` and
+writes the figures to `figures/paper_like/`.
+
+Generate selected figures only:
 
 ```bash
 python generate_plots.py --plots baselines
 python generate_plots.py --plots gduo geometry layerwise
 ```
 
-The generated files are written to `figures/paper_like/`:
+Generated outputs:
 
 ```text
 figure1_cifar_wikitext_baselines.pdf
@@ -40,76 +58,63 @@ figure3_geometry_variants.pdf
 figure4_muon_layerwise_lr_momentum.pdf
 ```
 
-## Repository layout
-
-```text
-generate_plots.py
-    Selects which paper figures to regenerate.
-
-train.py
-    Training/replay entry point. It can replay the processed CIFAR and
-    GPT/WikiText results used in the paper, and it can launch GPT/WikiText
-    training through external/llm-baselines.
-
-utils/plot_utils.py
-    Shared plotting code. It reads the compact CSV files in data/plot_inputs/.
-
-data/plot_inputs/
-    Small processed CSV files used by the plots. These replace the raw cluster
-    logs and keep the repository lightweight.
-
-external/llm-baselines/
-    GPT/WikiText training pipeline and optimizer implementations used for the
-    main language-model experiments.
-
-figures/paper_like/
-    Generated paper figures.
-```
-
 ## Training
 
-The minimal submission does not include raw cluster logs or the old CIFAR
-training code. Instead, `train.py` provides a reproducible replay of the
-processed results used in the figures:
+The repository is intentionally minimal. We do not include raw cluster logs,
+Slurm launchers, or old scratch scripts. The paper figures are reproduced from
+processed CSV files, while the GPT/WikiText training backend is kept runnable.
+
+Replay processed results:
 
 ```bash
 python train.py --task cifar
 python train.py --task gpt
 ```
 
-For GPT/WikiText, the same script can launch the real language-model training
-pipeline:
+Launch a real GPT/WikiText run:
 
 ```bash
 python train.py --task gpt --optimizer muon --execute
 python train.py --task gpt --optimizer adagrad-ema --execute
 ```
 
-This calls `external/llm-baselines/src/main.py` with the WikiText setup. Extra
-training parameters can be changed from `train.py` flags, for example:
+Change training settings with flags:
 
 ```bash
 python train.py --task gpt --optimizer muon --execute --iterations 2000 --device cuda
 ```
 
-The underlying GPT/WikiText entry point can also be called directly:
+The GPT entry point can also be called directly:
 
 ```bash
 cd external/llm-baselines
 python src/main.py ...
 ```
 
-The exact large-scale runs were executed on a cluster. This minimal repository
-does not include cluster launchers, raw logs, or the old CIFAR training script.
-The paper figures are reproduced from the processed CSV files in
-`data/plot_inputs/`.
+## Layout
 
-## What the folders mean
+```text
+MetaMuon.pdf
+    Final report.
 
-`data/plot_inputs/` contains the numerical results used for the figures.
-`utils/` contains reusable plotting utilities.
-`external/llm-baselines/` contains the GPT/WikiText experiment code.
-`figures/` contains generated outputs.
+generate_plots.py
+    Figure entry point.
 
-No Slurm scripts, shell sync scripts, raw Izar logs, or table exports are needed
-for this minimal reproducibility package.
+train.py
+    Result replay and GPT/WikiText training launcher.
+
+data/plot_inputs/
+    Processed numerical results used by the plots.
+
+utils/plot_utils.py
+    Shared plotting code.
+
+external/llm-baselines/
+    GPT/WikiText training code and optimizer implementations.
+
+figures/paper_like/
+    Generated figures.
+```
+
+This keeps the submission small, readable, and focused on reproducing the
+results used in the report.
