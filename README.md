@@ -6,8 +6,9 @@ The goal is to test whether optimizer choices can be learned during training:
 - temporal dynamics: learning rate and momentum;
 - geometry: how much preconditioning or curvature information should change the update direction.
 
-The repository is intentionally small. It keeps only the training code, the
-plotting code, and the compact CSV files needed to regenerate the paper figures.
+The repository is intentionally small. It keeps the plotting pipeline, the
+compact CSV files needed to regenerate the paper figures, and the GPT/WikiText
+training code used for the main experiments.
 
 ## Reproduce the figures
 
@@ -61,16 +62,6 @@ data/plot_inputs/
     Small processed CSV files used by the plots. These replace the raw cluster
     logs and keep the repository lightweight.
 
-train_cifar_fig1.py
-    CIFAR-10 training script for the fixed AdamW, Muon, and Newton--Muon
-    baselines, plus the CIFAR GD-UO variants.
-
-models/
-    CIFAR residual MLP model used by train_cifar_fig1.py.
-
-optimizers/
-    CIFAR optimizer implementations used by train_cifar_fig1.py.
-
 external/llm-baselines/
     GPT/WikiText training pipeline and optimizer implementations used for the
     main language-model experiments.
@@ -81,32 +72,22 @@ figures/paper_like/
 
 ## Training
 
-The paper uses two training pipelines.
-
-For the CIFAR-10 reproduction:
-
-```bash
-python train_cifar_fig1.py --optimizer adamw
-python train_cifar_fig1.py --optimizer muon
-python train_cifar_fig1.py --optimizer newton_muon
-```
-
-For GPT/WikiText, use the language-model training entry point:
+The main training code kept in this repository is the GPT/WikiText pipeline:
 
 ```bash
 cd external/llm-baselines
 python src/main.py ...
 ```
 
-The exact large-scale runs were executed on a cluster, but the repository does
-not include cluster launchers or raw logs. The plots are reproduced from the
-processed CSV files in `data/plot_inputs/`.
+The exact large-scale runs were executed on a cluster. This minimal repository
+does not include cluster launchers, raw logs, or the old CIFAR training script.
+The paper figures are reproduced from the processed CSV files in
+`data/plot_inputs/`.
 
 ## What the folders mean
 
 `data/plot_inputs/` contains the numerical results used for the figures.
 `utils/` contains reusable plotting utilities.
-`models/` and `optimizers/` support the CIFAR experiments.
 `external/llm-baselines/` contains the GPT/WikiText experiment code.
 `figures/` contains generated outputs.
 
