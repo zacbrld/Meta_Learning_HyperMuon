@@ -6,9 +6,9 @@ from pathlib import Path
 import pandas as pd
 
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[1]
 PLOT_DATA = ROOT / "data" / "plot_inputs"
-GPT_DIR = ROOT / "external" / "llm-baselines"
+GPT_DIR = ROOT / "llm_utils" / "llm-baselines"
 
 
 GPT_OPTIMIZERS = {

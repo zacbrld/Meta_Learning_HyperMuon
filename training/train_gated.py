@@ -1,4 +1,10 @@
 import argparse
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 from utils.train_utils import add_runtime_args, final_rows, gpt_command, read_plot_csv, run_commands
 

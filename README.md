@@ -37,27 +37,27 @@ pip install -r requirements.txt
 Regenerate every figure used in the report:
 
 ```bash
-python generate_plots.py
+python run.py
 ```
 
 Replay the processed training results:
 
 ```bash
-python train_baselines.py
-python train_speed_parameters.py
-python train_gated.py
+python training/train_baselines.py
+python training/train_speed_parameters.py
+python training/train_gated.py
 ```
 
 ## Figures
 
-`generate_plots.py` reads the compact CSV files in `data/plot_inputs/` and
+`run.py` reads the compact CSV files in `data/plot_inputs/` and
 writes the figures to `figures/paper_like/`.
 
 Generate selected figures only:
 
 ```bash
-python generate_plots.py --plots baselines
-python generate_plots.py --plots gduo geometry layerwise
+python run.py --plots baselines
+python run.py --plots gduo geometry layerwise
 ```
 
 Generated outputs:
@@ -81,42 +81,42 @@ training codebase.
 Replay processed results:
 
 ```bash
-python train_baselines.py
-python train_speed_parameters.py
-python train_gated.py
+python training/train_baselines.py
+python training/train_speed_parameters.py
+python training/train_gated.py
 ```
 
 The three scripts separate the experiment families:
 
 ```text
-train_baselines.py
+training/train_baselines.py
     Fixed AdamW, Muon, and Newton--Muon baselines.
 
-train_speed_parameters.py
+training/train_speed_parameters.py
     LR+momentum meta-learning, globally or layerwise.
 
-train_gated.py
+training/train_gated.py
     Learned geometry: Adam/Muon, Muon/Newton, AdaGrad-EMA/Muon, SOAP-lite/Muon.
 ```
 
 Launch real GPT/WikiText runs:
 
 ```bash
-python train_baselines.py --task gpt --optimizer muon --execute
-python train_speed_parameters.py --optimizer muon --scope layerwise --execute
-python train_gated.py --variant adagrad-ema --execute
+python training/train_baselines.py --task gpt --optimizer muon --execute
+python training/train_speed_parameters.py --optimizer muon --scope layerwise --execute
+python training/train_gated.py --variant adagrad-ema --execute
 ```
 
 Change training settings with flags:
 
 ```bash
-python train_gated.py --variant soap-lite --execute --iterations 2000 --device cuda
+python training/train_gated.py --variant soap-lite --execute --iterations 2000 --device cuda
 ```
 
 The GPT entry point can also be called directly:
 
 ```bash
-cd external/llm-baselines
+cd llm_utils/llm-baselines
 python src/main.py ...
 ```
 
@@ -126,19 +126,19 @@ python src/main.py ...
 MetaMuon.pdf
     Final report.
 
-generate_plots.py
+run.py
     Figure entry point.
 
-train_baselines.py
+training/train_baselines.py
     Fixed baseline launcher/replay.
 
-train_speed_parameters.py
+training/train_speed_parameters.py
     LR+momentum meta-learning launcher/replay.
 
-train_gated.py
+training/train_gated.py
     Learned geometry launcher/replay.
 
-train.py
+training/train.py
     Generic training/replay wrapper kept for convenience.
 
 data/plot_inputs/
@@ -147,7 +147,7 @@ data/plot_inputs/
 utils/plot_utils.py
     Shared plotting code.
 
-external/llm-baselines/
+llm_utils/llm-baselines/
     GPT/WikiText training code adapted from epfml/llm-baselines.
 
 figures/paper_like/

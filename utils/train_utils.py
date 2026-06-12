@@ -7,7 +7,7 @@ import pandas as pd
 
 ROOT = Path(__file__).resolve().parents[1]
 PLOT_DATA = ROOT / "data" / "plot_inputs"
-GPT_DIR = ROOT / "external" / "llm-baselines"
+GPT_DIR = ROOT / "llm_utils" / "llm-baselines"
 
 
 def read_plot_csv(name):
@@ -95,4 +95,3 @@ def final_rows(df, group_cols, step_col="iter"):
         final = group.sort_values(step_col).iloc[-1]
         rows.append((*keys, final))
     return rows
-

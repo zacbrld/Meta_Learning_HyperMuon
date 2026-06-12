@@ -18,7 +18,7 @@ PLOTS = {
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Generate the paper figures from fetched experiment logs.")
+    parser = argparse.ArgumentParser(description="Generate the paper figures from processed CSV results.")
     parser.add_argument(
         "--plots",
         nargs="+",
