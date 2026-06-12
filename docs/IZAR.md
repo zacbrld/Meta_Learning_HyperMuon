@@ -25,13 +25,13 @@ rsync -av --delete \
 Fixed Newton-Muon CIFAR reproduction:
 
 ```bash
-ssh izar 'cd /home/chetaill/muon && sbatch --array=0-2 run_cifar_fig1_izar.slurm'
+ssh izar 'cd /home/chetaill/muon && sbatch --array=0-2 slurm/run_cifar_fig1_izar.slurm'
 ```
 
 GD-UO LR-only CIFAR meta-learning:
 
 ```bash
-ssh izar 'cd /home/chetaill/muon && sbatch --array=0-2 run_cifar_gduo_izar.slurm'
+ssh izar 'cd /home/chetaill/muon && sbatch --array=0-2 slurm/run_cifar_gduo_izar.slurm'
 ```
 
 Monitor:

@@ -1,107 +1,159 @@
-# Meta Learning HyperMuon
+# Meta-Learning HyperMuon
 
-This repository studies Muon-style optimizers on CIFAR-10, with two goals:
+This project studies whether optimizer choices can be learned during training.
+We start from Muon and Newton--Muon, then learn two kinds of optimizer behavior:
 
-1. reproduce the CIFAR-10 part of Figure 1 from the Newton-Muon paper;
-2. test meta-learning of optimizer hyperparameters, starting with learning-rate
-   adaptation.
+- temporal dynamics: learning-rate and momentum schedules;
+- geometry: how much preconditioning or curvature information should change the update direction.
 
-The old proxy-based HyperMuon experiments are still kept, but the current main
-path is:
+The paper figures are generated from the experiment logs stored in `izar_fetch/`.
+The training jobs were run on the EPFL Izar cluster. Re-running all training from
+scratch is possible with the Slurm launchers, but the submission can be
+reproduced locally from the fetched logs.
 
-```text
-fixed AdamW / Muon / Newton-Muon baselines
-        ->
-LR-only GD-UO meta-learning
-        ->
-momentum and Newton-Schulz hyperparameter learning
-```
+## Reproduce the paper artifacts
 
-Detailed experiment notes and commands are in [docs/EXPERIMENTS.md](docs/EXPERIMENTS.md).
-Cluster commands are in [docs/IZAR.md](docs/IZAR.md).
-
-## Repository Layout
-
-```text
-models/
-  mlp.py                 legacy CIFAR MLP
-  resnet.py              legacy CIFAR ResNet-20
-  residual_mlp.py        32-layer residual MLP for Newton-Muon CIFAR
-
-optimizers/
-  adamw.py               legacy AdamW wrapper
-  sgd.py                 legacy SGD wrapper
-  muon.py                fixed Muon
-  newton_muon.py         fixed Newton-Muon
-  hyperadam.py           legacy proxy HyperAdam
-  hypermuon.py           legacy proxy HyperMuon L1/L2/L3
-  gduo_lr.py             LR-only GD-UO AdamW/Muon/Newton-Muon
-
-train.py                 legacy proxy experiments on MLP/ResNet
-plot.py                  legacy plots
-run_hypermuon_izar.slurm legacy Izar launcher
-
-train_cifar_fig1.py      CIFAR Figure 1 and GD-UO training script
-plot_cifar_fig1.py       accuracy vs step/time plots
-run_cifar_fig1_izar.slurm fixed AdamW/Muon/Newton-Muon array
-run_cifar_gduo_izar.slurm LR-only GD-UO array
-```
-
-Generated data, logs, figures, and fetched Izar outputs are ignored by git.
-
-## Installation
+Install the Python dependencies:
 
 ```bash
 pip install -r requirements.txt
 ```
 
-PyTorch uses CUDA automatically when a GPU is available.
-
-## Current Fixed Baseline
-
-Reproduce the CIFAR-10 panel of Figure 1:
+Regenerate the figures and result tables:
 
 ```bash
-python train_cifar_fig1.py --optimizer adamw
-python train_cifar_fig1.py --optimizer muon
-python train_cifar_fig1.py --optimizer newton_muon
+python run.py
 ```
 
-Plot:
-
-```bash
-python plot_cifar_fig1.py \
-  --results_dir results_cifar_fig1 \
-  --output figures/cifar_fig1_repro.png
-```
-
-## Current Meta-Learning Track
-
-Run LR-only GD-UO variants:
-
-```bash
-python train_cifar_fig1.py --optimizer adamw_gduo_lr --min_lr_ratio 1.0
-python train_cifar_fig1.py --optimizer muon_gduo_lr --min_lr_ratio 1.0
-python train_cifar_fig1.py --optimizer newton_muon_gduo_lr --min_lr_ratio 1.0
-```
-
-For Muon and Newton-Muon this learns only the matrix learning rate. Momentum,
-Newton-Schulz coefficients, ridge, EWMA beta, and refresh interval are fixed for
-now.
-
-## Legacy Proxy Track
-
-The original HyperMuon experiments are still available:
-
-```bash
-python train.py --model mlp --optimizer hypermuon_l3 --seed 0
-python train.py --model resnet --optimizer hypermuon_l3 --seed 0
-```
-
-This track uses the local proxy:
+The command writes:
 
 ```text
-proxy = - sum_W <grad_W, update_W(theta)>
+figures/paper_like/figure1_cifar_wikitext_baselines.pdf
+figures/paper_like/figure2_gduo_scopes.pdf
+figures/paper_like/figure3_geometry_variants.pdf
+figures/paper_like/figure4_muon_layerwise_lr_momentum.pdf
+tables/table_cifar_baselines.csv
+tables/table_cifar_baselines.tex
+tables/table_wikitext_baselines.csv
+tables/table_wikitext_baselines.tex
+tables/table_gduo_scopes.csv
+tables/table_gduo_scopes.tex
+tables/table_geometry.csv
+tables/table_geometry.tex
 ```
 
-It is useful as a baseline, but it is not the current main meta-learning method.
+To regenerate only the figures:
+
+```bash
+python run.py --skip-tables
+```
+
+To regenerate only the tables:
+
+```bash
+python run.py --skip-plots
+```
+
+## Main files
+
+```text
+run.py
+    Rebuilds all paper figures and tables from fetched logs.
+
+generate_plots.py
+    Rebuilds all paper figures only.
+
+utils/plot_utils.py
+    Shared plotting, log parsing, and figure generation utilities.
+
+plot_paper_*.py
+    Thin wrappers kept for regenerating one figure at a time.
+
+train_cifar_fig1.py
+    CIFAR-10 training script used for the fixed AdamW, Muon, and Newton--Muon
+    reproduction.
+
+external/llm-baselines/
+    GPT/WikiText training code and optimizer implementations.
+
+slurm/*.slurm
+    Izar launchers used to run the cluster experiments.
+```
+
+## Plotting
+
+All figure logic is centralized in `utils/plot_utils.py`. The simplest plotting
+entry point is:
+
+```bash
+python generate_plots.py
+```
+
+To regenerate only selected figures:
+
+```bash
+python generate_plots.py --plots baselines
+python generate_plots.py --plots gduo geometry layerwise
+```
+
+## Data layout
+
+```text
+izar_fetch/results_cifar_fig1/
+    CIFAR-10 CSV logs.
+
+izar_fetch/llm_newton_stability/diagnostic/
+    GPT WikiText baseline curves.
+
+izar_fetch/current_meta_logs/
+    Main GD-UO learning-rate and momentum runs.
+
+izar_fetch/recent_gating_precond/
+    Learned geometry and preconditioner runs.
+
+izar_fetch/layerwise_3005859/results/
+    Final learned layerwise Muon hyperparameters.
+```
+
+## Methods
+
+`AdamW`, `Muon`, and `Newton--Muon` are fixed optimizer baselines. `GD-UO`
+variants learn optimizer hyperparameters online by differentiating through the
+training step. For temporal learning, we learn learning-rate and momentum either
+globally or per matrix. For geometry learning, Muon remains the backbone and a
+learned bucket-wise gate controls how strongly a preconditioned gradient is
+injected before Muon's projection.
+
+## Cluster runs
+
+The Slurm files reproduce the raw training jobs on Izar. The most relevant ones
+for the paper are:
+
+```text
+slurm/run_cifar_fig1_izar.slurm
+slurm/run_llm_newton_stability_izar.slurm
+slurm/run_wikitext_51m_layerwise_izar.slurm
+slurm/run_wikitext_51m_gduo_missing_izar.slurm
+slurm/run_wikitext_51m_gating_izar.slurm
+slurm/run_wikitext_51m_precond_gate_izar.slurm
+```
+
+The local reproduction script does not submit cluster jobs.
+
+## Training code organization
+
+For the report, the cleanest story is to keep two training entry points:
+
+```text
+train_cifar_fig1.py
+    Small CIFAR-10 reproduction used for the fixed optimizer baselines.
+
+external/llm-baselines/src/main.py
+    GPT/WikiText training entry point used for the main paper experiments.
+```
+
+The optimizer logic belongs in `external/llm-baselines/src/optim/` for GPT runs
+and in `optimizers/` for the small CIFAR reproduction. Slurm files should stay
+in `slurm/`; they are launch recipes, not training code. Fetched logs and
+generated figures are separated from source code in `izar_fetch/`, `figures/`,
+and `tables/`.

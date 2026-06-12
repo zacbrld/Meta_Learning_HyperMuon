@@ -1,0 +1,6 @@
+variant,setting,iter,val_loss,val_acc,seconds_per_iter
+Adam/Muon,residual gate,2000,3.409,0.398946,2.22
+Muon/Newton,learned Newton strength,2000,3.508,0.388501,2.35
+AdaGrad-EMA/Muon,diagonal EMA precond.,2000,3.402,0.400545,2.3
+SOAP-lite/Muon,matrix precond.,2000,3.411,0.399296,2.3
+Muon,LR+momentum layerwise,2000,3.477,0.392582,2.3

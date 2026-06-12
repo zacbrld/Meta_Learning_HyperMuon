@@ -12,7 +12,7 @@ Files:
 ```text
 train.py
 plot.py
-run_hypermuon_izar.slurm
+slurm/run_hypermuon_izar.slurm
 optimizers/hyperadam.py
 optimizers/hypermuon.py
 models/mlp.py
@@ -57,7 +57,7 @@ Files:
 ```text
 train_cifar_fig1.py
 plot_cifar_fig1.py
-run_cifar_fig1_izar.slurm
+slurm/run_cifar_fig1_izar.slurm
 models/residual_mlp.py
 optimizers/muon.py
 optimizers/newton_muon.py
@@ -92,7 +92,7 @@ python train_cifar_fig1.py --optimizer newton_muon
 Run on Izar:
 
 ```bash
-sbatch --array=0-2 run_cifar_fig1_izar.slurm
+sbatch --array=0-2 slurm/run_cifar_fig1_izar.slurm
 ```
 
 Plot:
@@ -119,7 +119,7 @@ Files:
 
 ```text
 train_cifar_fig1.py
-run_cifar_gduo_izar.slurm
+slurm/run_cifar_gduo_izar.slurm
 optimizers/gduo_lr.py
 ```
 
@@ -163,7 +163,7 @@ python train_cifar_fig1.py --optimizer newton_muon_gduo_lr --min_lr_ratio 1.0
 Run on Izar:
 
 ```bash
-sbatch --array=0-2 run_cifar_gduo_izar.slurm
+sbatch --array=0-2 slurm/run_cifar_gduo_izar.slurm
 ```
 
 The GD-UO Slurm script uses warmup, then keeps the scheduler scale constant

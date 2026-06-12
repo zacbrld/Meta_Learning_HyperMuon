@@ -1,0 +1,4 @@
+optimizer,source,iter,val_loss,val_acc
+AdamW,adamw,2000,4.472,0.299923
+Muon,muon,2000,4.096,0.341239
+Newton--Muon,newton stable lr0p005_ridge0p5_clip3,2000,4.05,0.344421
